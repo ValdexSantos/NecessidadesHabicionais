@@ -3,7 +3,7 @@ Aplicação Streamlit para Sistema Fuzzy Modular - Necessidades Habitacionais
 
 Interface interativa para simular:
 1. SIF 1 - HAP (DOM_RUSTICOS + DOM_IMPROVISADOS -> HAB_PRECARIA)
-2. SIF 2 - COA (UDC + DC -> COA)
+2. SIF 2 - COA (UNID_DOM_CONV + DOM_COMODOS -> COA) - CORRIGIDO
 3. SIF 3 - DEH (Hab_Precária + Coabitação -> DEH)
 4. Índice Final (média dos SIFs)
 
@@ -96,7 +96,7 @@ def display_priority_badge(priority: str, score: float) -> str:
 def main():
     # Header
     st.markdown('<p class="main-header">🏠 Sistema Fuzzy Modular - SIF 1-3</p>', unsafe_allow_html=True)
-    st.markdown('<p class="sub-header">Baseado nas especificações do MATLAB</p>', unsafe_allow_html=True)
+    st.markdown('<p class="sub-header">Baseado nas especificações do MATLAB (SIF 2 corrigido)</p>', unsafe_allow_html=True)
     
     # Inicializar o sistema fuzzy
     fuzzy_system = HousingFuzzySystem()
@@ -108,7 +108,7 @@ def main():
         
         st.markdown("### Estrutura do Sistema")
         st.markdown("**SIF 1 - HAP:** DOM_RUSTICOS + DOM_IMPROVISADOS → HAB_PRECARIA")
-        st.markdown("**SIF 2 - COA:** UDC + DC → COA")
+        st.markdown("**SIF 2 - COA:** UNID_DOM_CONV + DOM_COMODOS → COA")
         st.markdown("**SIF 3 - DEH:** Hab_Precária + Coabitação → DEH")
         st.markdown("**Índice Final:** Média dos SIFs 1-3")
         
@@ -136,19 +136,21 @@ def main():
         
         **Saída:** HAB_PRECARIA (0-100)
         
-        **Funções de pertinência de entrada:**
+        **Funções de pertinência de entrada (4):**
         - Ideal: [0, 0, 33]
         - Aceitável: [0, 33, 66]
         - Parcialmente aceitável: [33, 66, 90]
-        - Inaceitável: [66, 90, 100, 100]
+        - Inaceitável: [66, 100, 100, 100] (trapezoidal)
         
-        **Funções de pertinência de saída:**
+        **Funções de pertinência de saída (6):**
         - Muito Baixa: [0, 0, 20]
         - Baixa: [0, 20, 40]
         - Média: [20, 40, 60]
         - Alta: [40, 60, 80]
         - Muito Alta: [60, 80, 100]
         - Altíssima: [80, 100, 100]
+        
+        **Regras:** 16 regras conforme MATLAB
         """)
         
         with st.form("sif1_form"):
@@ -190,42 +192,44 @@ def main():
             st.session_state.sif1_result = result.value
     
     with tab2:
-        st.header("SIF 2 - COA e SIF 3 - DEH")
-        
-        st.markdown("### SIF 2 - COA (Coabitação)")
+        st.header("SIF 2 - COA (Coabitação) - CORRIGIDO")
         st.markdown("""
         **Entradas:**
-        - UDC (0-100%): Unidades domésticas conviventes
-        - DC (0-100%): Domicílios cômodos
+        - UNID_DOM_CONV (0-100%): Unidades domésticas conviventes
+        - DOM_COMODOS (0-100%): Domicílios cômodos
         
         **Saída:** COA (0-100)
         
-        **Funções de pertinência de entrada:**
-        - B (Baixo): [0, 0, 30]
-        - M (Médio): [0, 30, 55]
-        - A (Alto): [30, 55, 100, 100]
+        **Funções de pertinência de entrada (4):**
+        - Ideal: [0, 0, 33]
+        - Aceitável: [0, 33, 66]
+        - Parcialmente aceitável: [33, 66, 90]
+        - Inaceitável: [66, 100, 100, 100] (trapezoidal)
         
-        **Funções de pertinência de saída:**
-        - muito baixo: [0, 0, 15, 30]
-        - baixo: [15, 30, 45]
-        - médio: [30, 45, 60]
-        - alto: [45, 60, 75]
-        - muito alto: [60, 75, 100, 100]
+        **Funções de pertinência de saída (6):**
+        - Muito baixa: [0, 0, 20]
+        - baixa: [0, 20, 40]
+        - média: [20, 40, 60]
+        - alta: [40, 60, 80]
+        - muito alta: [60, 80, 100]
+        - altíssima: [80, 100, 100]
+        
+        **Regras:** 16 regras conforme MATLAB
         """)
         
         with st.form("sif2_form"):
             col1, col2 = st.columns(2)
             with col1:
-                udc = st.slider("UDC (%)", 0, 100, 50, 1, key="udc_sif2")
+                unid_dom_conv = st.slider("UNID_DOM_CONV (%)", 0, 100, 50, 1, key="unid_dom_conv")
             with col2:
-                dc = st.slider("DC (%)", 0, 100, 50, 1, key="dc_sif2")
+                dom_comodos = st.slider("DOM_COMODOS (%)", 0, 100, 50, 1, key="dom_comodos")
             
             submit_sif2 = st.form_submit_button("Avaliar SIF 2 - COA", type="primary")
         
         if submit_sif2:
             result = fuzzy_system.evaluate_module('SIF2_COA', {
-                'UDC': udc,
-                'DC': dc
+                'UNID_DOM_CONV': unid_dom_conv,
+                'DOM_COMODOS': dom_comodos
             })
             
             st.markdown("---")
@@ -242,7 +246,7 @@ def main():
                 fig, ax = plt.subplots(figsize=(8, 3))
                 labels = list(result.memberships.keys())
                 values = list(result.memberships.values())
-                colors = ['#006400', '#388e3c', '#fbc02d', '#f57c00', '#d32f2f']
+                colors = ['#006400', '#388e3c', '#fbc02d', '#f57c00', '#d32f2f', '#9c27b0']
                 bars = ax.bar(labels, values, color=colors[:len(labels)])
                 ax.set_ylim(0, 1.1)
                 ax.set_title('Graus de Pertinência - COA')
@@ -260,14 +264,14 @@ def main():
         
         **Saída:** DEH (0-100)
         
-        **Funções de pertinência de entrada e saída:**
+        **Funções de pertinência de entrada e saída (5):**
         - Muito baixa: [0, 0, 20]
         - Baixa: [0, 20, 40]
         - Média: [20, 40, 60]
         - Alta: [40, 60, 80]
-        - Muito Alta: [60, 80, 100, 100]
+        - Muito Alta: [60, 100, 100, 100] (trapezoidal)
         
-        **Regras:** 25 regras conforme especificação MATLAB
+        **Regras:** 25 regras conforme MATLAB
         """)
         
         with st.form("sif3_form"):

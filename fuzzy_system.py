@@ -2,9 +2,9 @@
 Sistema Fuzzy Modular para Diagnóstico de Necessidades Habitacionais
 
 Baseado no esquema do grupo com as especificações exatas do MATLAB:
-- SIF 1 (HAP): DOM_RUSTICOS (A1) + DOM_IMPROVISADOS (A2) -> HAB_PRECARIA
-- SIF 2 (COA): UDC (A3) + DC (A4) -> COA
-- SIF 3 (DEH): Hab_Precária (SIF1) + Coabitação (SIF2) -> DEH
+- SIF 1 (HAP): DOM_RUSTICOS + DOM_IMPROVISADOS -> HAB_PRECARIA
+- SIF 2 (COA): UNID_DOM_CONV + DOM_COMODOS -> COA
+- SIF 3 (DEH): Hab_Precária + Coabitação -> DEH
 
 Cada módulo pode ser simulado individualmente ou em conjunto.
 """
@@ -55,7 +55,7 @@ def create_percentage_var_4mf(name: str) -> ctrl.Antecedent:
     var['Ideal'] = fuzz.trimf(var.universe, [0, 0, 33])
     var['Aceitável'] = fuzz.trimf(var.universe, [0, 33, 66])
     var['Parcialmente aceitável'] = fuzz.trimf(var.universe, [33, 66, 90])
-    var['Inaceitável'] = fuzz.trapmf(var.universe, [66, 90, 100, 100])
+    var['Inaceitável'] = fuzz.trapmf(var.universe, [66, 100, 100, 100])
     return var
 
 
@@ -67,17 +67,7 @@ def create_percentage_var_5mf(name: str) -> ctrl.Antecedent:
     var['Baixa'] = fuzz.trimf(var.universe, [0, 20, 40])
     var['Média'] = fuzz.trimf(var.universe, [20, 40, 60])
     var['Alta'] = fuzz.trimf(var.universe, [40, 60, 80])
-    var['Muito Alta'] = fuzz.trapmf(var.universe, [60, 80, 100, 100])
-    return var
-
-
-def create_coa_input_var(name: str) -> ctrl.Antecedent:
-    """Cria variável para COA: B, M, A (0-100)"""
-    universe = np.arange(0, 101, 1)
-    var = ctrl.Antecedent(universe, name)
-    var['B'] = fuzz.trimf(var.universe, [0, 0, 30])
-    var['M'] = fuzz.trimf(var.universe, [0, 30, 55])
-    var['A'] = fuzz.trapmf(var.universe, [30, 55, 100, 100])
+    var['Muito Alta'] = fuzz.trapmf(var.universe, [60, 100, 100, 100])
     return var
 
 
@@ -95,14 +85,15 @@ def create_hap_output_var(name: str) -> ctrl.Consequent:
 
 
 def create_coa_output_var(name: str) -> ctrl.Consequent:
-    """Cria variável de saída para COA: 5 níveis"""
+    """Cria variável de saída para COA: 6 níveis (CORRIGIDO)"""
     universe = np.arange(0, 101, 1)
     var = ctrl.Consequent(universe, name)
-    var['muito baixo'] = fuzz.trapmf(var.universe, [0, 0, 15, 30])
-    var['baixo'] = fuzz.trimf(var.universe, [15, 30, 45])
-    var['médio'] = fuzz.trimf(var.universe, [30, 45, 60])
-    var['alto'] = fuzz.trimf(var.universe, [45, 60, 75])
-    var['muito alto'] = fuzz.trapmf(var.universe, [60, 75, 100, 100])
+    var['Muito baixa'] = fuzz.trimf(var.universe, [0, 0, 20])
+    var['baixa'] = fuzz.trimf(var.universe, [0, 20, 40])
+    var['média'] = fuzz.trimf(var.universe, [20, 40, 60])
+    var['alta'] = fuzz.trimf(var.universe, [40, 60, 80])
+    var['muito alta'] = fuzz.trimf(var.universe, [60, 80, 100])
+    var['altíssima'] = fuzz.trimf(var.universe, [80, 100, 100])
     return var
 
 
@@ -138,17 +129,10 @@ class FuzzyModule:
     def evaluate(self, inputs: Dict[str, float]) -> FuzzyResult:
         """Avalia o módulo."""
         # Converter inputs para o formato esperado pelo skfuzzy
-        # O skfuzzy espera os nomes das variáveis (labels) como chaves
         simulation_inputs = {}
         for label in self.input_labels:
             if label in inputs:
                 simulation_inputs[label] = inputs[label]
-            else:
-                # Tentar encontrar a chave correspondente
-                for key in inputs.keys():
-                    if key in self.input_vars:
-                        simulation_inputs[label] = inputs[key]
-                        break
         
         self.simulation.inputs(simulation_inputs)
         try:
@@ -181,30 +165,38 @@ class FuzzyModule:
         # Verificar pertinências
         if 'Altíssima' in memberships and memberships['Altíssima'] > 0.5:
             return PriorityLevel.ALTISSIMA
+        elif 'altíssima' in memberships and memberships['altíssima'] > 0.5:
+            return PriorityLevel.ALTISSIMA
         elif 'Muito Alta' in memberships and memberships['Muito Alta'] > 0.5:
+            return PriorityLevel.MUITO_ALTO
+        elif 'muito alta' in memberships and memberships['muito alta'] > 0.5:
             return PriorityLevel.MUITO_ALTO
         elif 'Muito alto' in memberships and memberships['Muito alto'] > 0.5:
             return PriorityLevel.MUITO_ALTO
         elif 'Alto' in memberships and memberships['Alto'] > 0.5:
             return PriorityLevel.ALTO
+        elif 'alta' in memberships and memberships['alta'] > 0.5:
+            return PriorityLevel.ALTO
         elif 'Média' in memberships and memberships['Média'] > 0.5:
             return PriorityLevel.MEDIO
-        elif 'Médio' in memberships and memberships['Médio'] > 0.5:
+        elif 'média' in memberships and memberships['média'] > 0.5:
             return PriorityLevel.MEDIO
         elif 'Baixa' in memberships and memberships['Baixa'] > 0.5:
             return PriorityLevel.BAIXO
-        elif 'Baixo' in memberships and memberships['Baixo'] > 0.5:
+        elif 'baixa' in memberships and memberships['baixa'] > 0.5:
             return PriorityLevel.BAIXO
         elif 'Muito Baixa' in memberships and memberships['Muito Baixa'] > 0.5:
             return PriorityLevel.MUITO_BAIXO
-        elif 'muito baixo' in memberships and memberships['muito baixo'] > 0.5:
+        elif 'Muito baixo' in memberships and memberships['Muito baixo'] > 0.5:
+            return PriorityLevel.MUITO_BAIXO
+        elif 'muito baixa' in memberships and memberships['muito baixa'] > 0.5:
             return PriorityLevel.MUITO_BAIXO
         else:
             # Classificar por valor
             if value >= 80:
-                return PriorityLevel.ALTISSIMA if 'Altíssima' in [mf for mf in dir(self.output_var)] else PriorityLevel.MUITO_ALTO
+                return PriorityLevel.ALTISSIMA
             elif value >= 60:
-                return PriorityLevel.MUITO_ALTO if 'Muito Alto' in [mf for mf in dir(self.output_var)] else PriorityLevel.ALTO
+                return PriorityLevel.MUITO_ALTO
             elif value >= 40:
                 return PriorityLevel.ALTO
             elif value >= 20:
@@ -235,13 +227,13 @@ class HousingFuzzySystem:
         a2 = create_percentage_var_4mf('DOM_IMPROVISADOS')
         self.modules['A2'] = FuzzyModule('A2_DOM_IMPROVISADOS', {'DOM_IMPROVISADOS': a2}, a2, [], ['DOM_IMPROVISADOS'])
         
-        # A3 - UDC (0-100%)
-        a3 = create_coa_input_var('UDC')
-        self.modules['A3'] = FuzzyModule('A3_UDC', {'UDC': a3}, a3, [], ['UDC'])
+        # A3 - UNID_DOM_CONV (0-100%)
+        a3 = create_percentage_var_4mf('UNID_DOM_CONV')
+        self.modules['A3'] = FuzzyModule('A3_UNID_DOM_CONV', {'UNID_DOM_CONV': a3}, a3, [], ['UNID_DOM_CONV'])
         
-        # A4 - DC (0-100%)
-        a4 = create_coa_input_var('DC')
-        self.modules['A4'] = FuzzyModule('A4_DC', {'DC': a4}, a4, [], ['DC'])
+        # A4 - DOM_COMODOS (0-100%)
+        a4 = create_percentage_var_4mf('DOM_COMODOS')
+        self.modules['A4'] = FuzzyModule('A4_DOM_COMODOS', {'DOM_COMODOS': a4}, a4, [], ['DOM_COMODOS'])
         
         print("✅ Indicadores individuais carregados")
     
@@ -250,7 +242,7 @@ class HousingFuzzySystem:
         
         # ========================================================================
         # SIF 1 - HAP (Habitação Precária)
-        # Entradas: DOM_RUSTICOS, DOM_IMPROVISADOS
+        # Entradas: DOM_RUSTICOS (A1), DOM_IMPROVISADOS (A2)
         # Saída: HAB_PRECARIA
         # ========================================================================
         dom_rusticos = create_percentage_var_4mf('DOM_RUSTICOS')
@@ -290,38 +282,49 @@ class HousingFuzzySystem:
         )
         
         # ========================================================================
-        # SIF 2 - COA (Coabitação)
-        # Entradas: UDC, DC
+        # SIF 2 - COA (Coabitação) - CORRIGIDO
+        # Entradas: UNID_DOM_CONV (A3), DOM_COMODOS (A4)
         # Saída: COA
         # ========================================================================
-        udc = create_coa_input_var('UDC')
-        dc = create_coa_input_var('DC')
+        unid_dom_conv = create_percentage_var_4mf('UNID_DOM_CONV')
+        dom_comodos = create_percentage_var_4mf('DOM_COMODOS')
         coa = create_coa_output_var('COA')
         
-        # Regras do SIF 2
+        # Regras do SIF 2 (16 regras do MATLAB CORRIGIDO)
         coa_rules = [
-            ctrl.Rule(udc['B'] & dc['B'], coa['muito baixo']),
-            ctrl.Rule(udc['B'] & dc['M'], coa['baixo']),
-            ctrl.Rule(udc['B'] & dc['A'], coa['médio']),
-            ctrl.Rule(udc['M'] & dc['B'], coa['baixo']),
-            ctrl.Rule(udc['M'] & dc['M'], coa['médio']),
-            ctrl.Rule(udc['M'] & dc['A'], coa['alto']),
-            ctrl.Rule(udc['A'] & dc['B'], coa['médio']),
-            ctrl.Rule(udc['A'] & dc['M'], coa['alto']),
-            ctrl.Rule(udc['A'] & dc['A'], coa['muito alto']),
+            # UNID_DOM_CONV = Ideal (1)
+            ctrl.Rule(unid_dom_conv['Ideal'] & dom_comodos['Ideal'], coa['Muito baixa']),
+            ctrl.Rule(unid_dom_conv['Ideal'] & dom_comodos['Aceitável'], coa['Muito baixa']),
+            ctrl.Rule(unid_dom_conv['Ideal'] & dom_comodos['Parcialmente aceitável'], coa['baixa']),
+            ctrl.Rule(unid_dom_conv['Ideal'] & dom_comodos['Inaceitável'], coa['média']),
+            # UNID_DOM_CONV = Aceitável (2)
+            ctrl.Rule(unid_dom_conv['Aceitável'] & dom_comodos['Ideal'], coa['Muito baixa']),
+            ctrl.Rule(unid_dom_conv['Aceitável'] & dom_comodos['Aceitável'], coa['baixa']),
+            ctrl.Rule(unid_dom_conv['Aceitável'] & dom_comodos['Parcialmente aceitável'], coa['alta']),
+            ctrl.Rule(unid_dom_conv['Aceitável'] & dom_comodos['Inaceitável'], coa['muito alta']),
+            # UNID_DOM_CONV = Parcialmente aceitável (3)
+            ctrl.Rule(unid_dom_conv['Parcialmente aceitável'] & dom_comodos['Ideal'], coa['baixa']),
+            ctrl.Rule(unid_dom_conv['Parcialmente aceitável'] & dom_comodos['Aceitável'], coa['alta']),
+            ctrl.Rule(unid_dom_conv['Parcialmente aceitável'] & dom_comodos['Parcialmente aceitável'], coa['alta']),
+            ctrl.Rule(unid_dom_conv['Parcialmente aceitável'] & dom_comodos['Inaceitável'], coa['muito alta']),
+            # UNID_DOM_CONV = Inaceitável (4)
+            ctrl.Rule(unid_dom_conv['Inaceitável'] & dom_comodos['Ideal'], coa['média']),
+            ctrl.Rule(unid_dom_conv['Inaceitável'] & dom_comodos['Aceitável'], coa['muito alta']),
+            ctrl.Rule(unid_dom_conv['Inaceitável'] & dom_comodos['Parcialmente aceitável'], coa['muito alta']),
+            ctrl.Rule(unid_dom_conv['Inaceitável'] & dom_comodos['Inaceitável'], coa['altíssima']),
         ]
         
         self.modules['SIF2_COA'] = FuzzyModule(
             'SIF2_COA',
-            {'UDC': udc, 'DC': dc},
+            {'UNID_DOM_CONV': unid_dom_conv, 'DOM_COMODOS': dom_comodos},
             coa,
             coa_rules,
-            ['UDC', 'DC']
+            ['UNID_DOM_CONV', 'DOM_COMODOS']
         )
         
         # ========================================================================
         # SIF 3 - DEH (Déficit Habitacional)
-        # Entradas: Hab_Precária, Coabitação
+        # Entradas: Hab_Precária (SIF1), Coabitação (SIF2)
         # Saída: DEH
         # ========================================================================
         hab_precarria_deh = create_percentage_var_5mf('Hab_Precária')
@@ -370,7 +373,7 @@ class HousingFuzzySystem:
             ['Hab_Precária', 'Coabitação']
         )
         
-        print("✅ SIFs 1-3 carregados")
+        print("✅ SIFs 1-3 carregados (SIF 2 corrigido)")
     
     def get_module_names(self) -> List[str]:
         return list(self.modules.keys())
