@@ -1,7 +1,7 @@
 [project]
 name = "fuzzy-housing-system"
-version = "1.0.0"
-description = "Sistema Fuzzy para Diagnóstico de Necessidades Habitacionais"
+version = "2.0.0"
+description = "Sistema Fuzzy Modular para Diagnóstico de Necessidades Habitacionais"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [

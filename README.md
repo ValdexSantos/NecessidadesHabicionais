@@ -1,81 +1,80 @@
-# 🏠 Sistema Fuzzy - Necessidades Habitacionais
+# 🏠 Sistema Fuzzy Modular - Necessidades Habitacionais
 
-Um sistema de inferência fuzzy para diagnóstico e priorização de necessidades habitacionais.
+Um sistema de inferência fuzzy **modular** para diagnóstico e priorização de necessidades habitacionais, baseado no esquema do grupo.
 
 [![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://share.streamlit.io/)
 
 ## 📋 Descrição
 
-Este sistema utiliza lógica fuzzy para avaliar a prioridade de atendimento habitacional com base em quatro critérios:
-- **Renda familiar** (em salários mínimos)
-- **Número de moradores**
-- **Condição da moradia** (escala 0-10)
-- **Acesso a serviços** (escala 0-10)
+Este sistema implementa uma arquitetura modular para avaliar necessidades habitacionais em três níveis:
 
-O resultado indica uma das quatro categorias de prioridade: **Baixa, Média, Alta ou Urgente**.
+### 📌 Nível 1: Indicadores Individuais (14)
+- **Habitação (A)**: A1, A2, A3, A4
+- **Saneamento (B)**: B1, B2, B3, B4
+- **Edificação (C)**: C1, C2, C3
+- **Serviços (D)**: D1, D2, D3, D4
+- **Renda (E)**: E1, E2, E3, E4
+
+### 📊 Nível 2: Subíndices (SIF) - 10 implementados
+- SIF 1 - HAP (Habitação Precária)
+- SIF 2 - COA (Coabitação)
+- SIF 3 - DEH (Déficit Habitacional)
+- SIF 4 - SAB (Saneamento Básico)
+- SIF 6 - CED (Carência Edílica)
+- SIF 7 - SGC (Serviços de Garantia Constitucional)
+- SIF 8 - ASP (Acesso a Serviços Prioritários)
+- SIF 9 - RED (Renda Direta)
+- SIF 10 - PTR (Programas de Transferência de Renda)
+- SIF 11 - PSE (Perfil Socioeconômico)
+
+### 🎯 Nível 3: Índice Final
+- **ISF - RMs**: Índice de Satisfação das Necessidades Habitacionais
 
 ## 🚀 Como Executar
 
 ### Pré-requisitos
 
-Instale o `uv` (gerenciador de pacotes):
-
 ```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
+pip install streamlit scikit-fuzzy numpy matplotlib scipy networkx
 ```
 
-### Instalação e Execução
-
-1. Sincronize as dependências:
-
-   ```bash
-   uv sync
-   ```
-
-2. Execute a aplicação:
-
-   ```bash
-   uv run streamlit run streamlit_app.py
-   ```
-
-Ou utilize o pip tradicional:
+### Execução
 
 ```bash
-pip install -r requirements.txt
 streamlit run streamlit_app.py
 ```
 
 ## 📊 Funcionalidades
 
-- **Avaliação Interativa**: Interface intuitiva para inserção de dados
-- **Análise Detalhada**: Visualização das funções de pertinência
-- **Regras Fuzzy**: Exibição das regras do sistema
-- **Visualização**: Gráficos de pertinência e resultados
+### Aba 1: Indicadores Individuais
+- Selecione indicadores por categoria (Habitação, Saneamento, Edificação, Serviços, Renda)
+- Avalie cada indicador individualmente
+- Visualize a prioridade de cada indicador
 
-## 🎯 Variáveis do Sistema
+### Aba 2: Subíndices (SIF)
+- Selecione os SIFs que deseja avaliar
+- Insira os valores dos indicadores necessários para cada SIF
+- Visualize a prioridade de cada SIF
+- Resultados são armazenados para uso no índice final
 
-### Variáveis de Entrada
+### Aba 3: Índice Final (ISF)
+- Calcule o índice final usando resultados armazenados dos SIFs
+- Ou insira manualmente os valores dos SIFs
+- Visualize a prioridade final
 
-| Variável | Tipo | Faixa | Categorias |
-|----------|------|-------|------------|
-| Renda | Antecedent | 0-20 SM | Baixa, Média, Alta |
-| Moradores | Antecedent | 1-10 | Poucos, Médio, Muitos |
-| Condição | Antecedent | 0-10 | Ruim, Regular, Boa |
-| Serviços | Antecedent | 0-10 | Baixo, Médio, Alto |
+### Aba 4: Documentação
+- Documentação completa do sistema
+- Estrutura dos módulos
+- Níveis de prioridade
 
-### Variável de Saída
+## 🎨 Níveis de Prioridade
 
-| Variável | Tipo | Faixa | Categorias |
-|----------|------|-------|------------|
-| Prioridade | Consequent | 0-100 | Baixa, Média, Alta, Urgente |
-
-## 🔧 Arquitetura
-
-```
-fuzzy_system.py          # Módulo do sistema fuzzy
-streamlit_app.py         # Interface Streamlit
-pyproject.toml          # Dependências do projeto
-```
+| Nível | Score | Significado |
+|-------|-------|-------------|
+| 🟢 **BAIXA** | 0-39 | Prioridade normal |
+| 🟡 **MÉDIA** | 40-69 | Atenção moderada |
+| 🟠 **ALTA** | 70-89 | Prioridade elevada |
+| 🔴 **URGENTE** | 90-100 | Intervenção imediata |
 
 ## 📚 Sobre Lógica Fuzzy
 
@@ -83,33 +82,57 @@ A lógica fuzzy permite lidar com incertezas e conceitos vagos, sendo ideal para
 
 1. **Fuzzificação**: Conversão de valores numéricos em graus de pertinência
 2. **Inferência**: Aplicação de regras fuzzy para determinar a prioridade
-3. **Defuzzificação**: Conversão do resultado fuzzy em valor interpretável
+3. **Defuzzificação**: Conversão do resultado fuzzy em valor interpretável (0-100)
 
-## 🎨 Interface
+## 🛠️ Tecnologias Utilizadas
 
-A aplicação Streamlit oferece:
-- Aba **Avaliação**: Para inserção de dados e obtenção de resultados
-- Aba **Análise Detalhada**: Para visualização das funções de pertinência e regras
-- Aba **Sobre**: Documentação do sistema
+- **Streamlit**: Framework para criação de aplicações web interativas
+- **scikit-fuzzy**: Biblioteca para implementação de sistemas fuzzy
+- **NumPy**: Biblioteca para computação numérica
+- **Matplotlib**: Biblioteca para visualização de dados
+- **SciPy**: Biblioteca para computação científica
+- **NetworkX**: Biblioteca para manipulação de grafos
 
-## 📈 Exemplo de Uso
+## 📁 Estrutura do Projeto
+
+```
+.
+├── fuzzy_system.py          # Módulo do sistema fuzzy (25KB)
+├── streamlit_app.py         # Interface Streamlit (22KB)
+├── Esquema_Grupo.pdf       # Esquema de referência
+├── pyproject.toml          # Dependências do projeto
+├── requirements.txt         # Dependências para pip
+└── README.md                # Documentação
+```
+
+## 🎯 Exemplo de Uso
 
 ```python
-from fuzzy_system import FuzzyHousingSystem
+from fuzzy_system import HousingFuzzySystem
 
 # Criar o sistema
-fuzzy_system = FuzzyHousingSystem()
+fuzzy_system = HousingFuzzySystem()
 
-# Avaliar uma família
-result = fuzzy_system.evaluate(
-    income_value=3.5,           # 3.5 salários mínimos
-    residents_value=6,          # 6 moradores
-    housing_condition_value=2,  # Condição ruim
-    service_access_value=3      # Acesso baixo a serviços
-)
+# Avaliar um indicador individual
+result = fuzzy_system.evaluate_module('A1', {'A1': 1.0})
+print(f"A1: {result.label.value} ({result.value:.2f})")
 
-print(f"Prioridade: {result['priority_label']}")
-print(f"Score: {result['priority_value']:.2f}")
+# Avaliar um SIF
+result = fuzzy_system.evaluate_module('SIF1_HAP', {
+    'A1': 1.0, 'A2': 0.0, 'A3': 1.0, 'A4': 0.0
+})
+print(f"SIF1_HAP: {result.label.value} ({result.value:.2f})")
+
+# Avaliar o índice final
+sif_results = {
+    'SIF1_HAP': 85.0,
+    'SIF3_DEH': 70.0,
+    'SIF4_SAB': 90.0,
+    'SIF6_CED': 75.0,
+    'SIF11_PSE': 85.0
+}
+result = fuzzy_system.evaluate_final_index(sif_results)
+print(f"ISF: {result.label.value} ({result.value:.2f})")
 ```
 
 ## 🤝 Contribuição
@@ -117,7 +140,8 @@ print(f"Score: {result['priority_value']:.2f}")
 Contribuições são bem-vindas! Sinta-se à vontade para:
 - Reportar bugs
 - Sugerir melhorias
-- Adicionar novas funcionalidades
+- Adicionar novos módulos
+- Expandir os SIFs existentes
 
 ## 📄 Licença
 

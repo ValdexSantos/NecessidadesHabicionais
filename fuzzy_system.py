@@ -1,27 +1,19 @@
 """
 Sistema Fuzzy Modular para Diagnóstico de Necessidades Habitacionais
 
-Este módulo implementa um sistema de inferência fuzzy MODULAR para avaliar 
-as necessidades habitacionais com base no esquema do grupo.
-
-Estrutura:
-- Indicadores individuais (A1, A2, B1, B2, C1, C2, D1, D2, E1, E2, E3, E4)
-- Subíndices (SIF 1-12)
-- Índice Final (ISF - RMs)
-
-Cada módulo pode ser simulado individualmente ou em conjunto.
+Sistema simplificado baseado no esquema do grupo.
+Permite simular indicadores individuais e subíndices (SIF) separadamente.
 """
 
 import numpy as np
 import skfuzzy as fuzz
 from skfuzzy import control as ctrl
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 from enum import Enum
 
 
 class PriorityLevel(Enum):
-    """Níveis de prioridade do sistema."""
     LOW = "BAIXA"
     MEDIUM = "MÉDIA"
     HIGH = "ALTA"
@@ -30,14 +22,12 @@ class PriorityLevel(Enum):
 
 @dataclass
 class FuzzyResult:
-    """Resultado de uma avaliação fuzzy."""
     value: float
     label: PriorityLevel
     memberships: Dict[str, float]
     inputs: Dict[str, float]
     
     def to_dict(self) -> Dict[str, Any]:
-        """Converte para dicionário."""
         return {
             'value': self.value,
             'label': self.label.value,
@@ -46,323 +36,561 @@ class FuzzyResult:
         }
 
 
+# Funções auxiliares para criar variáveis fuzzy
+def create_boolean_var(name: str) -> ctrl.Antecedent:
+    universe = np.arange(0, 1.1, 0.1)
+    var = ctrl.Antecedent(universe, name)
+    var['no'] = fuzz.trimf(var.universe, [0, 0, 0.5])
+    var['yes'] = fuzz.trimf(var.universe, [0.5, 1, 1])
+    return var
+
+
+def create_access_var(name: str) -> ctrl.Antecedent:
+    universe = np.arange(0, 10.1, 0.1)
+    var = ctrl.Antecedent(universe, name)
+    var['low'] = fuzz.trimf(var.universe, [0, 0, 4])
+    var['medium'] = fuzz.trimf(var.universe, [2, 5, 7])
+    var['high'] = fuzz.trimf(var.universe, [6, 10, 10])
+    return var
+
+
+def create_priority_var() -> ctrl.Consequent:
+    universe = np.arange(0, 101, 1)
+    var = ctrl.Consequent(universe, 'priority')
+    var['low'] = fuzz.trimf(var.universe, [0, 0, 35])
+    var['medium'] = fuzz.trimf(var.universe, [25, 50, 75])
+    var['high'] = fuzz.trimf(var.universe, [65, 85, 100])
+    var['urgent'] = fuzz.trimf(var.universe, [90, 100, 100])
+    return var
+
+
 class FuzzyModule:
-    """Módulo fuzzy genérico para qualquer subíndice."""
+    """Módulo fuzzy genérico."""
     
-    def __init__(self, name: str):
-        """
-        Inicializa um módulo fuzzy.
-        
-        Args:
-            name: Nome do módulo
-        """
+    def __init__(self, name: str, input_vars: Dict[str, ctrl.Antecedent], 
+                 output_var: ctrl.Consequent, rules: List[ctrl.Rule]):
         self.name = name
-        self.ctrl_system = None
-        self.simulation = None
-        self.input_ranges: Dict[str, Tuple[float, float, float]] = {}
-    
-    def build_system(self, input_ranges: Dict[str, Tuple[float, float, float]],
-                    rules: List[Any],
-                    output_range: Tuple[float, float, float] = (0, 100, 1)):
-        """
-        Constrói o sistema de controle fuzzy.
-        
-        Args:
-            input_ranges: Dicionário com faixas para cada entrada {var_name: (min, max, step)}
-            rules: Lista de regras fuzzy
-            output_range: Faixa para a saída (min, max, step)
-        """
-        self.input_ranges = input_ranges
-        
-        # Criar antecedentes
-        antecedents = {}
-        for var_name, (min_val, max_val, step) in input_ranges.items():
-            universe = np.arange(min_val, max_val + step, step)
-            antecedents[var_name] = ctrl.Antecedent(universe, var_name)
-        
-        # Criar consequente
-        universe = np.arange(output_range[0], output_range[1] + output_range[2], output_range[2])
-        consequent = ctrl.Consequent(universe, 'priority')
-        
-        # Adicionar funções de pertinência para cada antecedente
-        for var_name, ante in antecedents.items():
-            if var_name in ['A1', 'A2', 'A3', 'A4', 'B1', 'B2', 'B3', 'B4', 'C1', 'C2', 'C3', 'E3', 'E4']:
-                ante['no'] = fuzz.trimf(ante.universe, [0, 0, 0.5])
-                ante['yes'] = fuzz.trimf(ante.universe, [0.5, 1, 1])
-            elif var_name in ['D1', 'D2', 'D3', 'D4']:
-                ante['low'] = fuzz.trimf(ante.universe, [0, 0, 4])
-                ante['medium'] = fuzz.trimf(ante.universe, [2, 5, 7])
-                ante['high'] = fuzz.trimf(ante.universe, [6, 10, 10])
-            elif var_name == 'E1':
-                ante['low'] = fuzz.trimf(ante.universe, [0, 0, 33])
-                ante['medium'] = fuzz.trimf(ante.universe, [25, 50, 75])
-                ante['high'] = fuzz.trimf(ante.universe, [67, 100, 100])
-            elif var_name == 'E2':
-                ante['low'] = fuzz.trimf(ante.universe, [0, 0, 3])
-                ante['medium'] = fuzz.trimf(ante.universe, [2, 5, 7])
-                ante['high'] = fuzz.trimf(ante.universe, [6, 10, 10])
-            else:
-                ante['low'] = fuzz.trimf(ante.universe, [0, 0, 35])
-                ante['medium'] = fuzz.trimf(ante.universe, [25, 50, 75])
-                ante['high'] = fuzz.trimf(ante.universe, [65, 85, 100])
-                ante['urgent'] = fuzz.trimf(ante.universe, [90, 100, 100])
-        
-        # Adicionar funções de pertinência para o consequente
-        consequent['low'] = fuzz.trimf(consequent.universe, [0, 0, 35])
-        consequent['medium'] = fuzz.trimf(consequent.universe, [25, 50, 75])
-        consequent['high'] = fuzz.trimf(consequent.universe, [65, 85, 100])
-        consequent['urgent'] = fuzz.trimf(consequent.universe, [90, 100, 100])
-        
-        # Criar regras
-        rule_list = []
-        for rule in rules:
-            rule_list.append(rule)
-        
-        self.ctrl_system = ctrl.ControlSystem(rule_list)
+        self.input_vars = input_vars
+        self.output_var = output_var
+        self.ctrl_system = ctrl.ControlSystem(rules)
         self.simulation = ctrl.ControlSystemSimulation(self.ctrl_system)
-        self.antecedents = antecedents
-        self.consequent = consequent
     
     def evaluate(self, inputs: Dict[str, float]) -> FuzzyResult:
-        """
-        Avalia o módulo com os valores de entrada.
-        
-        Args:
-            inputs: Dicionário com valores para cada variável de entrada
-        
-        Returns:
-            FuzzyResult com o resultado da avaliação
-        """
-        # Validar entradas
-        for var_name in self.input_ranges.keys():
-            if var_name not in inputs:
-                raise ValueError(f"Missing input: {var_name}")
-        
-        # Configurar entradas
-        input_dict = {var_name: inputs[var_name] for var_name in self.input_ranges.keys()}
-        self.simulation.inputs(input_dict)
-        
-        # Computar
+        """Avalia o módulo."""
+        self.simulation.inputs(inputs)
         try:
             self.simulation.compute()
-        except Exception as e:
-            return FuzzyResult(
-                value=0.0,
-                label=PriorityLevel.LOW,
-                memberships={'low': 1.0, 'medium': 0.0, 'high': 0.0, 'urgent': 0.0},
-                inputs=inputs
-            )
+        except:
+            return FuzzyResult(value=0, label=PriorityLevel.LOW, 
+                             memberships={'low': 1, 'medium': 0, 'high': 0, 'urgent': 0}, inputs=inputs)
         
-        # Obter resultado
-        output_value = self.simulation.output['priority']
+        value = self.simulation.output['priority']
         
         # Calcular pertinências
         memberships = {}
-        for mf_name in ['low', 'medium', 'high', 'urgent']:
+        for mf in ['low', 'medium', 'high', 'urgent']:
             try:
-                memberships[mf_name] = float(fuzz.interp_membership(
-                    self.consequent.universe,
-                    getattr(self.consequent, mf_name).mf,
-                    output_value
+                memberships[mf] = float(fuzz.interp_membership(
+                    self.output_var.universe,
+                    getattr(self.output_var, mf).mf,
+                    value
                 ))
             except:
-                memberships[mf_name] = 0.0
+                memberships[mf] = 0.0
         
-        # Classificar prioridade
-        label = self._classify_priority(output_value, memberships)
-        
-        return FuzzyResult(
-            value=float(output_value),
-            label=label,
-            memberships=memberships,
-            inputs=inputs
-        )
-    
-    def _classify_priority(self, value: float, memberships: Dict[str, float]) -> PriorityLevel:
-        """Classifica o nível de prioridade."""
-        if memberships.get('urgent', 0) > 0.5:
-            return PriorityLevel.URGENT
-        elif memberships.get('high', 0) > 0.5:
-            return PriorityLevel.HIGH
-        elif memberships.get('medium', 0) > 0.5:
-            return PriorityLevel.MEDIUM
+        # Classificar
+        if value >= 90:
+            label = PriorityLevel.URGENT
+        elif value >= 70:
+            label = PriorityLevel.HIGH
+        elif value >= 40:
+            label = PriorityLevel.MEDIUM
         else:
-            return PriorityLevel.LOW
-
-
-def create_boolean_antecedent(name: str) -> ctrl.Antecedent:
-    """Cria um antecedente booleano (0-1)."""
-    universe = np.arange(0, 1.1, 0.1)
-    ante = ctrl.Antecedent(universe, name)
-    ante['no'] = fuzz.trimf(ante.universe, [0, 0, 0.5])
-    ante['yes'] = fuzz.trimf(ante.universe, [0.5, 1, 1])
-    return ante
-
-
-def create_access_antecedent(name: str) -> ctrl.Antecedent:
-    """Cria um antecedente de acesso (0-10)."""
-    universe = np.arange(0, 10.1, 0.1)
-    ante = ctrl.Antecedent(universe, name)
-    ante['low'] = fuzz.trimf(ante.universe, [0, 0, 4])
-    ante['medium'] = fuzz.trimf(ante.universe, [2, 5, 7])
-    ante['high'] = fuzz.trimf(ante.universe, [6, 10, 10])
-    return ante
-
-
-def create_percentage_antecedent(name: str) -> ctrl.Antecedent:
-    """Cria um antecedente de porcentagem (0-100)."""
-    universe = np.arange(0, 101, 1)
-    ante = ctrl.Antecedent(universe, name)
-    ante['low'] = fuzz.trimf(ante.universe, [0, 0, 33])
-    ante['medium'] = fuzz.trimf(ante.universe, [25, 50, 75])
-    ante['high'] = fuzz.trimf(ante.universe, [67, 100, 100])
-    return ante
-
-
-def create_count_antecedent(name: str, max_val: int = 10) -> ctrl.Antecedent:
-    """Cria um antecedente de contagem (0-max_val)."""
-    universe = np.arange(0, max_val + 1, 1)
-    ante = ctrl.Antecedent(universe, name)
-    ante['low'] = fuzz.trimf(ante.universe, [0, 0, max_val // 3])
-    ante['medium'] = fuzz.trimf(ante.universe, [max_val // 3, max_val // 2, 2 * max_val // 3])
-    ante['high'] = fuzz.trimf(ante.universe, [2 * max_val // 3, max_val, max_val])
-    return ante
-
-
-def create_priority_consequent() -> ctrl.Consequent:
-    """Cria um consequente de prioridade (0-100)."""
-    universe = np.arange(0, 101, 1)
-    conse = ctrl.Consequent(universe, 'priority')
-    conse['low'] = fuzz.trimf(conse.universe, [0, 0, 35])
-    conse['medium'] = fuzz.trimf(conse.universe, [25, 50, 75])
-    conse['high'] = fuzz.trimf(conse.universe, [65, 85, 100])
-    conse['urgent'] = fuzz.trimf(conse.universe, [90, 100, 100])
-    return conse
+            label = PriorityLevel.LOW
+        
+        return FuzzyResult(value=value, label=label, memberships=memberships, inputs=inputs)
 
 
 class HousingFuzzySystem:
-    """
-    Sistema Fuzzy Modular para Necessidades Habitacionais.
-    
-    Baseado no esquema do grupo com:
-    - Indicadores individuais (A1, A2, B1, B2, C1, C2, D1, D2, E1, E2, E3, E4)
-    - 12 Subíndices (SIF 1-12)
-    - Índice Final (ISF - RMs)
-    """
+    """Sistema Fuzzy Modular para Necessidades Habitacionais."""
     
     def __init__(self):
-        """Inicializa o sistema fuzzy modular."""
         self.modules: Dict[str, FuzzyModule] = {}
-        self._initialize_all_modules()
+        self._init_indicators()
+        self._init_sifs()
+        self._init_final_index()
     
-    def _initialize_all_modules(self):
-        """Inicializa todos os módulos do sistema."""
-        priority_conseq = create_priority_consequent()
-        
-        # ========================================================================
-        # MÓDULO A - HABITAÇÃO
-        # ========================================================================
+    def _init_indicators(self):
+        """Inicializa os indicadores individuais."""
+        priority = create_priority_var()
         
         # A1 - Domicílios rústicos
-        a1 = create_boolean_antecedent('A1')
-        rule1 = ctrl.Rule(a1['yes'], priority_conseq['urgent'])
-        rule2 = ctrl.Rule(a1['no'], priority_conseq['low'])
-        module_a1 = FuzzyModule('A1_Domicilios_Rusticos')
-        module_a1.ctrl_system = ctrl.ControlSystem([rule1, rule2])
-        module_a1.simulation = ctrl.ControlSystemSimulation(module_a1.ctrl_system)
-        module_a1.input_ranges = {'A1': (0, 1, 0.1)}
-        self.modules['A1'] = module_a1
+        a1 = create_boolean_var('A1')
+        self.modules['A1'] = FuzzyModule(
+            'A1_Domicilios_Rusticos', {'A1': a1}, priority,
+            [ctrl.Rule(a1['yes'], priority['urgent']), ctrl.Rule(a1['no'], priority['low'])]
+        )
         
         # A2 - Domicílios improvisados
-        a2 = create_boolean_antecedent('A2')
-        rule1 = ctrl.Rule(a2['yes'], priority_conseq['urgent'])
-        rule2 = ctrl.Rule(a2['no'], priority_conseq['low'])
-        module_a2 = FuzzyModule('A2_Domicilios_Improvisados')
-        module_a2.ctrl_system = ctrl.ControlSystem([rule1, rule2])
-        module_a2.simulation = ctrl.ControlSystemSimulation(module_a2.ctrl_system)
-        module_a2.input_ranges = {'A2': (0, 1, 0.1)}
-        self.modules['A2'] = module_a2
+        a2 = create_boolean_var('A2')
+        self.modules['A2'] = FuzzyModule(
+            'A2_Domicilios_Improvisados', {'A2': a2}, priority,
+            [ctrl.Rule(a2['yes'], priority['urgent']), ctrl.Rule(a2['no'], priority['low'])]
+        )
         
         # A3 - Unidades domésticas conviventes deficit
-        a3 = create_boolean_antecedent('A3')
-        rule1 = ctrl.Rule(a3['yes'], priority_conseq['high'])
-        rule2 = ctrl.Rule(a3['no'], priority_conseq['low'])
-        module_a3 = FuzzyModule('A3_Unidades_Conviventes_Deficit')
-        module_a3.ctrl_system = ctrl.ControlSystem([rule1, rule2])
-        module_a3.simulation = ctrl.ControlSystemSimulation(module_a3.ctrl_system)
-        module_a3.input_ranges = {'A3': (0, 1, 0.1)}
-        self.modules['A3'] = module_a3
+        a3 = create_boolean_var('A3')
+        self.modules['A3'] = FuzzyModule(
+            'A3_Unidades_Conviventes', {'A3': a3}, priority,
+            [ctrl.Rule(a3['yes'], priority['high']), ctrl.Rule(a3['no'], priority['low'])]
+        )
         
         # A4 - Domicílios Cômodos
-        a4 = create_boolean_antecedent('A4')
-        rule1 = ctrl.Rule(a4['yes'], priority_conseq['high'])
-        rule2 = ctrl.Rule(a4['no'], priority_conseq['low'])
-        module_a4 = FuzzyModule('A4_Domicilios_Comodos')
-        module_a4.ctrl_system = ctrl.ControlSystem([rule1, rule2])
-        module_a4.simulation = ctrl.ControlSystemSimulation(module_a4.ctrl_system)
-        module_a4.input_ranges = {'A4': (0, 1, 0.1)}
-        self.modules['A4'] = module_a4
+        a4 = create_boolean_var('A4')
+        self.modules['A4'] = FuzzyModule(
+            'A4_Domicilios_Comodos', {'A4': a4}, priority,
+            [ctrl.Rule(a4['yes'], priority['high']), ctrl.Rule(a4['no'], priority['low'])]
+        )
         
-        # ========================================================================
-        # SIF 1 - HAP (Habitação Precária)
-        # ========================================================================
-        a1_hap = create_boolean_antecedent('A1')
-        a2_hap = create_boolean_antecedent('A2')
-        a3_hap = create_boolean_antecedent('A3')
-        a4_hap = create_boolean_antecedent('A4')
-        priority_hap = create_priority_consequent()
+        # B1 - Inadequação de Esgotamento sanitário
+        b1 = create_boolean_var('B1')
+        self.modules['B1'] = FuzzyModule(
+            'B1_Esgotamento', {'B1': b1}, priority,
+            [ctrl.Rule(b1['yes'], priority['high']), ctrl.Rule(b1['no'], priority['low'])]
+        )
         
-        rules_hap = [
-            ctrl.Rule(a1_hap['yes'] & a2_hap['yes'], priority_hap['urgent']),
-            ctrl.Rule(a1_hap['yes'] & a3_hap['yes'], priority_hap['urgent']),
-            ctrl.Rule(a2_hap['yes'] & a4_hap['yes'], priority_hap['urgent']),
-            ctrl.Rule(a1_hap['yes'], priority_hap['high']),
-            ctrl.Rule(a2_hap['yes'], priority_hap['high']),
-            ctrl.Rule(a3_hap['yes'] & a4_hap['yes'], priority_hap['high']),
-            ctrl.Rule(a3_hap['yes'], priority_hap['medium']),
-            ctrl.Rule(a4_hap['yes'], priority_hap['medium']),
-            ctrl.Rule(a1_hap['no'] & a2_hap['no'] & a3_hap['no'] & a4_hap['no'], priority_hap['low'])
-        ]
+        # B2 - Inadequação da Coleta de lixo
+        b2 = create_boolean_var('B2')
+        self.modules['B2'] = FuzzyModule(
+            'B2_Coleta_Lixo', {'B2': b2}, priority,
+            [ctrl.Rule(b2['yes'], priority['high']), ctrl.Rule(b2['no'], priority['low'])]
+        )
         
-        module_hap = FuzzyModule('SIF1_HAP_Habitacao_Precaria')
-        module_hap.ctrl_system = ctrl.ControlSystem(rules_hap)
-        module_hap.simulation = ctrl.ControlSystemSimulation(module_hap.ctrl_system)
-        module_hap.input_ranges = {'A1': (0, 1, 0.1), 'A2': (0, 1, 0.1), 'A3': (0, 1, 0.1), 'A4': (0, 1, 0.1)}
-        self.modules['SIF1_HAP'] = module_hap
+        # B3 - Inadequação de Abastecimento de água
+        b3 = create_boolean_var('B3')
+        self.modules['B3'] = FuzzyModule(
+            'B3_Abastecimento_Agua', {'B3': b3}, priority,
+            [ctrl.Rule(b3['yes'], priority['urgent']), ctrl.Rule(b3['no'], priority['low'])]
+        )
         
-        print("✅ Módulos A e SIF1 carregados")
+        # B4 - Ausência de iluminação pública
+        b4 = create_boolean_var('B4')
+        self.modules['B4'] = FuzzyModule(
+            'B4_Iluminacao', {'B4': b4}, priority,
+            [ctrl.Rule(b4['yes'], priority['high']), ctrl.Rule(b4['no'], priority['low'])]
+        )
+        
+        # C1 - Piso ou cobertura inadequados
+        c1 = create_boolean_var('C1')
+        self.modules['C1'] = FuzzyModule(
+            'C1_Piso_Cobertura', {'C1': c1}, priority,
+            [ctrl.Rule(c1['yes'], priority['high']), ctrl.Rule(c1['no'], priority['low'])]
+        )
+        
+        # C2 - Inexistência de banheiro exclusivo
+        c2 = create_boolean_var('C2')
+        self.modules['C2'] = FuzzyModule(
+            'C2_Banheiro', {'C2': c2}, priority,
+            [ctrl.Rule(c2['yes'], priority['urgent']), ctrl.Rule(c2['no'], priority['low'])]
+        )
+        
+        # C3 - Cômodos igual a dormitórios
+        c3 = create_boolean_var('C3')
+        self.modules['C3'] = FuzzyModule(
+            'C3_Comodos', {'C3': c3}, priority,
+            [ctrl.Rule(c3['yes'], priority['high']), ctrl.Rule(c3['no'], priority['low'])]
+        )
+        
+        # D1 - Acesso à Educação
+        d1 = create_access_var('D1')
+        self.modules['D1'] = FuzzyModule(
+            'D1_Educacao', {'D1': d1}, priority,
+            [ctrl.Rule(d1['low'], priority['urgent']), 
+             ctrl.Rule(d1['medium'], priority['medium']), 
+             ctrl.Rule(d1['high'], priority['low'])]
+        )
+        
+        # D2 - Acesso à Saúde
+        d2 = create_access_var('D2')
+        self.modules['D2'] = FuzzyModule(
+            'D2_Saude', {'D2': d2}, priority,
+            [ctrl.Rule(d2['low'], priority['urgent']), 
+             ctrl.Rule(d2['medium'], priority['medium']), 
+             ctrl.Rule(d2['high'], priority['low'])]
+        )
+        
+        # D3 - Acesso a transporte
+        d3 = create_access_var('D3')
+        self.modules['D3'] = FuzzyModule(
+            'D3_Transporte', {'D3': d3}, priority,
+            [ctrl.Rule(d3['low'], priority['high']), 
+             ctrl.Rule(d3['medium'], priority['medium']), 
+             ctrl.Rule(d3['high'], priority['low'])]
+        )
+        
+        # D4 - Conectividade Digital
+        d4 = create_access_var('D4')
+        self.modules['D4'] = FuzzyModule(
+            'D4_Conectividade', {'D4': d4}, priority,
+            [ctrl.Rule(d4['low'], priority['medium']), 
+             ctrl.Rule(d4['medium'], priority['low']), 
+             ctrl.Rule(d4['high'], priority['low'])]
+        )
+        
+        # E1 - Renda per capita (0-100%)
+        e1_universe = np.arange(0, 101, 1)
+        e1 = ctrl.Antecedent(e1_universe, 'E1')
+        e1['low'] = fuzz.trimf(e1.universe, [0, 0, 33])
+        e1['medium'] = fuzz.trimf(e1.universe, [25, 50, 75])
+        e1['high'] = fuzz.trimf(e1.universe, [67, 100, 100])
+        self.modules['E1'] = FuzzyModule(
+            'E1_Renda_Per_Capita', {'E1': e1}, priority,
+            [ctrl.Rule(e1['low'], priority['urgent']), 
+             ctrl.Rule(e1['medium'], priority['medium']), 
+             ctrl.Rule(e1['high'], priority['low'])]
+        )
+        
+        # E2 - Número de membros empregados (0-10)
+        e2_universe = np.arange(0, 11, 1)
+        e2 = ctrl.Antecedent(e2_universe, 'E2')
+        e2['low'] = fuzz.trimf(e2.universe, [0, 0, 3])
+        e2['medium'] = fuzz.trimf(e2.universe, [2, 5, 7])
+        e2['high'] = fuzz.trimf(e2.universe, [6, 10, 10])
+        self.modules['E2'] = FuzzyModule(
+            'E2_Membros_Empregados', {'E2': e2}, priority,
+            [ctrl.Rule(e2['low'], priority['urgent']), 
+             ctrl.Rule(e2['medium'], priority['medium']), 
+             ctrl.Rule(e2['high'], priority['low'])]
+        )
+        
+        # E3 - Famílias atendidas pelo PBF
+        e3 = create_boolean_var('E3')
+        self.modules['E3'] = FuzzyModule(
+            'E3_PBF', {'E3': e3}, priority,
+            [ctrl.Rule(e3['yes'], priority['urgent']), ctrl.Rule(e3['no'], priority['low'])]
+        )
+        
+        # E4 - Famílias beneficiárias do BPC
+        e4 = create_boolean_var('E4')
+        self.modules['E4'] = FuzzyModule(
+            'E4_BPC', {'E4': e4}, priority,
+            [ctrl.Rule(e4['yes'], priority['urgent']), ctrl.Rule(e4['no'], priority['low'])]
+        )
+        
+        print("✅ Indicadores individuais carregados")
+    
+    def _init_sifs(self):
+        """Inicializa os subíndices (SIF)."""
+        priority = create_priority_var()
+        
+        # SIF 1 - HAP (Habitação Precária): A1, A2, A3, A4
+        a1 = create_boolean_var('A1')
+        a2 = create_boolean_var('A2')
+        a3 = create_boolean_var('A3')
+        a4 = create_boolean_var('A4')
+        
+        self.modules['SIF1_HAP'] = FuzzyModule(
+            'SIF1_HAP', {'A1': a1, 'A2': a2, 'A3': a3, 'A4': a4}, priority,
+            [
+                ctrl.Rule(a1['yes'] & a2['yes'], priority['urgent']),
+                ctrl.Rule(a1['yes'] & a3['yes'], priority['urgent']),
+                ctrl.Rule(a2['yes'] & a4['yes'], priority['urgent']),
+                ctrl.Rule(a1['yes'], priority['high']),
+                ctrl.Rule(a2['yes'], priority['high']),
+                ctrl.Rule(a3['yes'] & a4['yes'], priority['high']),
+                ctrl.Rule(a3['yes'], priority['medium']),
+                ctrl.Rule(a4['yes'], priority['medium']),
+                ctrl.Rule(a1['no'] & a2['no'] & a3['no'] & a4['no'], priority['low'])
+            ]
+        )
+        
+        # SIF 2 - COA (Coabitação): A4
+        a4_coa = create_boolean_var('A4')
+        self.modules['SIF2_COA'] = FuzzyModule(
+            'SIF2_COA', {'A4': a4_coa}, priority,
+            [ctrl.Rule(a4_coa['yes'], priority['high']), ctrl.Rule(a4_coa['no'], priority['low'])]
+        )
+        
+        # SIF 3 - DEH (Déficit Habitacional): A1, A2, A3
+        a1_deh = create_boolean_var('A1')
+        a2_deh = create_boolean_var('A2')
+        a3_deh = create_boolean_var('A3')
+        
+        self.modules['SIF3_DEH'] = FuzzyModule(
+            'SIF3_DEH', {'A1': a1_deh, 'A2': a2_deh, 'A3': a3_deh}, priority,
+            [
+                ctrl.Rule(a1_deh['yes'] & a2_deh['yes'], priority['urgent']),
+                ctrl.Rule(a1_deh['yes'] & a3_deh['yes'], priority['urgent']),
+                ctrl.Rule(a2_deh['yes'] & a3_deh['yes'], priority['urgent']),
+                ctrl.Rule(a1_deh['yes'], priority['high']),
+                ctrl.Rule(a2_deh['yes'], priority['high']),
+                ctrl.Rule(a3_deh['yes'], priority['medium']),
+                ctrl.Rule(a1_deh['no'] & a2_deh['no'] & a3_deh['no'], priority['low'])
+            ]
+        )
+        
+        # SIF 4 - SAB (Saneamento Básico): B1, B2, B3, B4
+        b1 = create_boolean_var('B1')
+        b2 = create_boolean_var('B2')
+        b3 = create_boolean_var('B3')
+        b4 = create_boolean_var('B4')
+        
+        self.modules['SIF4_SAB'] = FuzzyModule(
+            'SIF4_SAB', {'B1': b1, 'B2': b2, 'B3': b3, 'B4': b4}, priority,
+            [
+                ctrl.Rule(b1['yes'] & b2['yes'] & b3['yes'], priority['urgent']),
+                ctrl.Rule(b3['yes'] & b4['yes'], priority['urgent']),
+                ctrl.Rule(b1['yes'] & b3['yes'], priority['high']),
+                ctrl.Rule(b2['yes'] & b3['yes'], priority['high']),
+                ctrl.Rule(b1['yes'] & b2['yes'], priority['high']),
+                ctrl.Rule(b3['yes'], priority['high']),
+                ctrl.Rule(b1['yes'], priority['medium']),
+                ctrl.Rule(b2['yes'], priority['medium']),
+                ctrl.Rule(b4['yes'], priority['medium']),
+                ctrl.Rule(b1['no'] & b2['no'] & b3['no'] & b4['no'], priority['low'])
+            ]
+        )
+        
+        # SIF 6 - CED (Carência Edílica): C1, C2, C3
+        c1 = create_boolean_var('C1')
+        c2 = create_boolean_var('C2')
+        c3 = create_boolean_var('C3')
+        
+        self.modules['SIF6_CED'] = FuzzyModule(
+            'SIF6_CED', {'C1': c1, 'C2': c2, 'C3': c3}, priority,
+            [
+                ctrl.Rule(c1['yes'] & c2['yes'], priority['urgent']),
+                ctrl.Rule(c2['yes'] & c3['yes'], priority['urgent']),
+                ctrl.Rule(c1['yes'] & c3['yes'], priority['high']),
+                ctrl.Rule(c2['yes'], priority['urgent']),
+                ctrl.Rule(c1['yes'], priority['high']),
+                ctrl.Rule(c3['yes'], priority['high']),
+                ctrl.Rule(c1['no'] & c2['no'] & c3['no'], priority['low'])
+            ]
+        )
+        
+        # SIF 7 - SGC (Serviços de Garantia Constitucional): D1, D2, D3, D4
+        d1 = create_access_var('D1')
+        d2 = create_access_var('D2')
+        d3 = create_access_var('D3')
+        d4 = create_access_var('D4')
+        
+        self.modules['SIF7_SGC'] = FuzzyModule(
+            'SIF7_SGC', {'D1': d1, 'D2': d2, 'D3': d3, 'D4': d4}, priority,
+            [
+                ctrl.Rule(d1['low'] & d2['low'], priority['urgent']),
+                ctrl.Rule(d1['low'] & d3['low'], priority['urgent']),
+                ctrl.Rule(d2['low'] & d3['low'], priority['urgent']),
+                ctrl.Rule(d1['low'], priority['high']),
+                ctrl.Rule(d2['low'], priority['high']),
+                ctrl.Rule(d3['low'], priority['high']),
+                ctrl.Rule(d4['low'], priority['medium']),
+                ctrl.Rule(d1['medium'] & d2['medium'] & d3['medium'] & d4['medium'], priority['medium']),
+                ctrl.Rule(d1['high'] & d2['high'] & d3['high'] & d4['high'], priority['low'])
+            ]
+        )
+        
+        # SIF 8 - ASP (Acesso a Serviços Prioritários): D1, D2, D3
+        d1_asp = create_access_var('D1')
+        d2_asp = create_access_var('D2')
+        d3_asp = create_access_var('D3')
+        
+        self.modules['SIF8_ASP'] = FuzzyModule(
+            'SIF8_ASP', {'D1': d1_asp, 'D2': d2_asp, 'D3': d3_asp}, priority,
+            [
+                ctrl.Rule(d1_asp['low'] & d2_asp['low'], priority['urgent']),
+                ctrl.Rule(d1_asp['low'] & d3_asp['low'], priority['urgent']),
+                ctrl.Rule(d2_asp['low'] & d3_asp['low'], priority['urgent']),
+                ctrl.Rule(d1_asp['low'], priority['high']),
+                ctrl.Rule(d2_asp['low'], priority['high']),
+                ctrl.Rule(d3_asp['low'], priority['high']),
+                ctrl.Rule(d1_asp['medium'] & d2_asp['medium'] & d3_asp['medium'], priority['medium']),
+                ctrl.Rule(d1_asp['high'] & d2_asp['high'] & d3_asp['high'], priority['low'])
+            ]
+        )
+        
+        # SIF 9 - RED (Renda Direta): E1, E2
+        e1_red_universe = np.arange(0, 101, 1)
+        e1_red = ctrl.Antecedent(e1_red_universe, 'E1')
+        e1_red['low'] = fuzz.trimf(e1_red.universe, [0, 0, 33])
+        e1_red['medium'] = fuzz.trimf(e1_red.universe, [25, 50, 75])
+        e1_red['high'] = fuzz.trimf(e1_red.universe, [67, 100, 100])
+        
+        e2_red_universe = np.arange(0, 11, 1)
+        e2_red = ctrl.Antecedent(e2_red_universe, 'E2')
+        e2_red['low'] = fuzz.trimf(e2_red.universe, [0, 0, 3])
+        e2_red['medium'] = fuzz.trimf(e2_red.universe, [2, 5, 7])
+        e2_red['high'] = fuzz.trimf(e2_red.universe, [6, 10, 10])
+        
+        self.modules['SIF9_RED'] = FuzzyModule(
+            'SIF9_RED', {'E1': e1_red, 'E2': e2_red}, priority,
+            [
+                ctrl.Rule(e1_red['low'] & e2_red['low'], priority['urgent']),
+                ctrl.Rule(e1_red['low'], priority['urgent']),
+                ctrl.Rule(e2_red['low'], priority['high']),
+                ctrl.Rule(e1_red['medium'] & e2_red['medium'], priority['medium']),
+                ctrl.Rule(e1_red['high'] & e2_red['high'], priority['low'])
+            ]
+        )
+        
+        # SIF 10 - PTR (Programas de Transferência de Renda): E3, E4
+        e3 = create_boolean_var('E3')
+        e4 = create_boolean_var('E4')
+        
+        self.modules['SIF10_PTR'] = FuzzyModule(
+            'SIF10_PTR', {'E3': e3, 'E4': e4}, priority,
+            [
+                ctrl.Rule(e3['yes'] & e4['yes'], priority['urgent']),
+                ctrl.Rule(e3['yes'], priority['high']),
+                ctrl.Rule(e4['yes'], priority['high']),
+                ctrl.Rule(e3['no'] & e4['no'], priority['low'])
+            ]
+        )
+        
+        # SIF 11 - PSE (Perfil Socioeconômico): E1, E2, E3, E4
+        e1_pse_universe = np.arange(0, 101, 1)
+        e1_pse = ctrl.Antecedent(e1_pse_universe, 'E1')
+        e1_pse['low'] = fuzz.trimf(e1_pse.universe, [0, 0, 33])
+        e1_pse['medium'] = fuzz.trimf(e1_pse.universe, [25, 50, 75])
+        e1_pse['high'] = fuzz.trimf(e1_pse.universe, [67, 100, 100])
+        
+        e2_pse_universe = np.arange(0, 11, 1)
+        e2_pse = ctrl.Antecedent(e2_pse_universe, 'E2')
+        e2_pse['low'] = fuzz.trimf(e2_pse.universe, [0, 0, 3])
+        e2_pse['medium'] = fuzz.trimf(e2_pse.universe, [2, 5, 7])
+        e2_pse['high'] = fuzz.trimf(e2_pse.universe, [6, 10, 10])
+        
+        e3_pse = create_boolean_var('E3')
+        e4_pse = create_boolean_var('E4')
+        
+        self.modules['SIF11_PSE'] = FuzzyModule(
+            'SIF11_PSE', {'E1': e1_pse, 'E2': e2_pse, 'E3': e3_pse, 'E4': e4_pse}, priority,
+            [
+                ctrl.Rule(e1_pse['low'] & e2_pse['low'] & e3_pse['yes'], priority['urgent']),
+                ctrl.Rule(e1_pse['low'] & e4_pse['yes'], priority['urgent']),
+                ctrl.Rule(e1_pse['low'] & e2_pse['low'], priority['urgent']),
+                ctrl.Rule(e3_pse['yes'] & e4_pse['yes'], priority['urgent']),
+                ctrl.Rule(e1_pse['low'], priority['high']),
+                ctrl.Rule(e2_pse['low'], priority['high']),
+                ctrl.Rule(e3_pse['yes'], priority['high']),
+                ctrl.Rule(e4_pse['yes'], priority['high']),
+                ctrl.Rule(e1_pse['medium'] & e2_pse['medium'] & e3_pse['no'] & e4_pse['no'], priority['medium']),
+                ctrl.Rule(e1_pse['high'] & e2_pse['high'], priority['low'])
+            ]
+        )
+        
+        print("✅ Subíndices (SIF) carregados")
+    
+    def _init_final_index(self):
+        """Inicializa o índice final (ISF)."""
+        priority = create_priority_var()
+        
+        # Variáveis para os SIFs (0-100)
+        sif1 = ctrl.Antecedent(np.arange(0, 101, 1), 'SIF1_HAP')
+        sif1['low'] = fuzz.trimf(sif1.universe, [0, 0, 35])
+        sif1['medium'] = fuzz.trimf(sif1.universe, [25, 50, 75])
+        sif1['high'] = fuzz.trimf(sif1.universe, [65, 85, 100])
+        sif1['urgent'] = fuzz.trimf(sif1.universe, [90, 100, 100])
+        
+        sif3 = ctrl.Antecedent(np.arange(0, 101, 1), 'SIF3_DEH')
+        sif3['low'] = fuzz.trimf(sif3.universe, [0, 0, 35])
+        sif3['medium'] = fuzz.trimf(sif3.universe, [25, 50, 75])
+        sif3['high'] = fuzz.trimf(sif3.universe, [65, 85, 100])
+        sif3['urgent'] = fuzz.trimf(sif3.universe, [90, 100, 100])
+        
+        sif4 = ctrl.Antecedent(np.arange(0, 101, 1), 'SIF4_SAB')
+        sif4['low'] = fuzz.trimf(sif4.universe, [0, 0, 35])
+        sif4['medium'] = fuzz.trimf(sif4.universe, [25, 50, 75])
+        sif4['high'] = fuzz.trimf(sif4.universe, [65, 85, 100])
+        sif4['urgent'] = fuzz.trimf(sif4.universe, [90, 100, 100])
+        
+        sif6 = ctrl.Antecedent(np.arange(0, 101, 1), 'SIF6_CED')
+        sif6['low'] = fuzz.trimf(sif6.universe, [0, 0, 35])
+        sif6['medium'] = fuzz.trimf(sif6.universe, [25, 50, 75])
+        sif6['high'] = fuzz.trimf(sif6.universe, [65, 85, 100])
+        sif6['urgent'] = fuzz.trimf(sif6.universe, [90, 100, 100])
+        
+        sif11 = ctrl.Antecedent(np.arange(0, 101, 1), 'SIF11_PSE')
+        sif11['low'] = fuzz.trimf(sif11.universe, [0, 0, 35])
+        sif11['medium'] = fuzz.trimf(sif11.universe, [25, 50, 75])
+        sif11['high'] = fuzz.trimf(sif11.universe, [65, 85, 100])
+        sif11['urgent'] = fuzz.trimf(sif11.universe, [90, 100, 100])
+        
+        isf_priority = create_priority_var()
+        
+        self.modules['ISF_FINAL'] = FuzzyModule(
+            'ISF_FINAL', 
+            {'SIF1_HAP': sif1, 'SIF3_DEH': sif3, 'SIF4_SAB': sif4, 'SIF6_CED': sif6, 'SIF11_PSE': sif11},
+            isf_priority,
+            [
+                ctrl.Rule(sif1['urgent'], isf_priority['urgent']),
+                ctrl.Rule(sif3['urgent'], isf_priority['urgent']),
+                ctrl.Rule(sif4['urgent'], isf_priority['urgent']),
+                ctrl.Rule(sif6['urgent'], isf_priority['urgent']),
+                ctrl.Rule(sif11['urgent'], isf_priority['urgent']),
+                ctrl.Rule(sif1['high'] & sif3['high'], isf_priority['urgent']),
+                ctrl.Rule(sif4['high'] & sif6['high'], isf_priority['urgent']),
+                ctrl.Rule(sif1['high'] & sif4['high'], isf_priority['urgent']),
+                ctrl.Rule(sif1['high'] & sif3['medium'] & sif4['medium'], isf_priority['high']),
+                ctrl.Rule(sif1['medium'] & sif3['medium'] & sif4['medium'] & sif6['medium'], isf_priority['high']),
+                ctrl.Rule(sif1['medium'] & sif3['medium'], isf_priority['medium']),
+                ctrl.Rule(sif1['low'] & sif3['low'] & sif4['low'] & sif6['low'], isf_priority['low'])
+            ]
+        )
+        
+        print("✅ Índice Final (ISF) carregado")
     
     def get_module_names(self) -> List[str]:
-        """Retorna a lista de todos os módulos disponíveis."""
         return list(self.modules.keys())
     
     def get_module(self, name: str) -> Optional[FuzzyModule]:
-        """Retorna um módulo pelo nome."""
         return self.modules.get(name)
     
     def evaluate_module(self, module_name: str, inputs: Dict[str, float]) -> FuzzyResult:
-        """
-        Avalia um módulo específico.
-        
-        Args:
-            module_name: Nome do módulo (ex: 'A1', 'SIF1_HAP', 'ISF_FINAL')
-            inputs: Dicionário com os valores de entrada
-        
-        Returns:
-            FuzzyResult com o resultado
-        """
         if module_name not in self.modules:
             raise ValueError(f"Module '{module_name}' not found. Available: {self.get_module_names()}")
-        
         return self.modules[module_name].evaluate(inputs)
+    
+    def evaluate_all_indicators(self, inputs: Dict[str, float]) -> Dict[str, FuzzyResult]:
+        results = {}
+        for name in self.modules:
+            if len(name) <= 2:  # Indicadores individuais
+                try:
+                    result = self.evaluate_module(name, {name: inputs.get(name, 0)})
+                    results[name] = result
+                except:
+                    pass
+        return results
+    
+    def evaluate_all_sifs(self, inputs: Dict[str, float]) -> Dict[str, FuzzyResult]:
+        results = {}
+        for name in self.modules:
+            if name.startswith('SIF'):
+                try:
+                    module = self.modules[name]
+                    module_inputs = {v: inputs.get(v, 0) for v in module.input_vars.keys()}
+                    result = self.evaluate_module(name, module_inputs)
+                    results[name] = result
+                except:
+                    pass
+        return results
+    
+    def evaluate_final_index(self, sif_results: Dict[str, float]) -> FuzzyResult:
+        inputs = {}
+        for sif in ['SIF1_HAP', 'SIF3_DEH', 'SIF4_SAB', 'SIF6_CED', 'SIF11_PSE']:
+            inputs[sif] = sif_results.get(sif, 0)
+        return self.evaluate_module('ISF_FINAL', inputs)
+    
+    def get_module_info(self, module_name: str) -> Dict[str, Any]:
+        if module_name not in self.modules:
+            return {'error': f'Module {module_name} not found'}
+        module = self.modules[module_name]
+        return {
+            'name': module.name,
+            'input_vars': list(module.input_vars.keys()),
+            'output_var': 'priority'
+        }
 
 
 def create_fuzzy_system() -> HousingFuzzySystem:
-    """Factory function para criar o sistema fuzzy."""
     return HousingFuzzySystem()
-
-
-if __name__ == "__main__":
-    system = create_fuzzy_system()
-    print("Sistema criado com sucesso!")
-    print(f"Módulos disponíveis: {system.get_module_names()}")

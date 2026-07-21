@@ -1,8 +1,12 @@
 """
 Aplicação Streamlit para Sistema Fuzzy Modular - Necessidades Habitacionais
 
-Interface interativa para simular indicadores individuais, subíndices (SIF) 
-e o índice final (ISF) de forma modular.
+Interface interativa para simular:
+1. Indicadores individuais (A1, A2, B1, B2, C1, C2, D1, D2, E1, E2, E3, E4)
+2. Subíndices (SIF 1-12)
+3. Índice Final (ISF)
+
+Cada módulo pode ser simulado individualmente ou em conjunto.
 """
 
 import streamlit as st
@@ -35,12 +39,6 @@ st.markdown("""
         text-align: center;
         margin-bottom: 2rem;
     }
-    .metric-card {
-        background-color: #f0f2f6;
-        padding: 1rem;
-        border-radius: 0.5rem;
-        border-left: 4px solid #1f77b4;
-    }
     .priority-badge {
         font-size: 1.2rem;
         font-weight: bold;
@@ -65,33 +63,11 @@ st.markdown("""
         background-color: #388e3c;
         color: white;
     }
-    .module-card {
-        background-color: #ffffff;
-        padding: 1rem;
-        border-radius: 0.5rem;
-        border: 1px solid #ddd;
-        margin-bottom: 1rem;
-    }
-    .sif-card {
-        background-color: #e8f5e8;
-        padding: 1rem;
-        border-radius: 0.5rem;
-        border-left: 4px solid #388e3c;
-        margin-bottom: 1rem;
-    }
-    .indicator-card {
-        background-color: #fff3e0;
-        padding: 1rem;
-        border-radius: 0.5rem;
-        border-left: 4px solid #f57c00;
-        margin-bottom: 1rem;
-    }
     </style>
 """, unsafe_allow_html=True)
 
 
 def get_priority_color(priority: str) -> str:
-    """Retorna a classe CSS para o badge de prioridade."""
     colors = {
         'BAIXA': 'priority-low',
         'MÉDIA': 'priority-medium',
@@ -102,14 +78,11 @@ def get_priority_color(priority: str) -> str:
 
 
 def display_priority_badge(priority: str, score: float) -> str:
-    """Gera o HTML para o badge de prioridade."""
     color_class = get_priority_color(priority)
     return f'<span class="priority-badge {color_class}">{priority} ({score:.1f})</span>'
 
 
 def main():
-    """Função principal da aplicação."""
-    
     # Header
     st.markdown('<p class="main-header">🏠 Sistema Fuzzy Modular</p>', unsafe_allow_html=True)
     st.markdown('<p class="sub-header">Diagnóstico de Necessidades Habitacionais - Esquema Grupo</p>', unsafe_allow_html=True)
@@ -117,24 +90,15 @@ def main():
     # Inicializar o sistema fuzzy
     fuzzy_system = HousingFuzzySystem()
     
-    # Sidebar com informações
+    # Sidebar
     with st.sidebar:
         st.image("https://img.icons8.com/color/96/000000/house-plan.png", width=80)
         st.title("Navegação")
         
-        st.markdown("### Módulos Disponíveis")
-        st.markdown("**Indicadores Individuais:**")
-        st.markdown("- A1, A2, A3, A4 (Habitação)")
-        st.markdown("- B1, B2, B3, B4 (Saneamento)")
-        st.markdown("- C1, C2, C3 (Edificação)")
-        st.markdown("- D1, D2, D3, D4 (Serviços)")
-        st.markdown("- E1, E2, E3, E4 (Renda)")
-        
-        st.markdown("**Subíndices (SIF):**")
-        st.markdown("- SIF 1-12 (12 subíndices)")
-        
-        st.markdown("**Índice Final:**")
-        st.markdown("- ISF (Índice de Satisfação)")
+        st.markdown("### Estrutura do Sistema")
+        st.markdown("**Indicadores:** 14 (A1-E4)")
+        st.markdown("**Subíndices:** 10 (SIF 1-11)")
+        st.markdown("**Índice Final:** ISF")
         
         st.markdown("---")
         st.markdown("### Legenda")
@@ -145,7 +109,7 @@ def main():
     
     # Abas principais
     tab1, tab2, tab3, tab4 = st.tabs([
-        "📊 Simulação Individual", 
+        "📊 Indicadores Individuais", 
         "📈 Subíndices (SIF)", 
         "🎯 Índice Final (ISF)",
         "ℹ️ Documentação"
@@ -153,15 +117,13 @@ def main():
     
     with tab1:
         st.header("Simulação de Indicadores Individuais")
-        st.markdown("Avalie cada indicador individualmente ou em grupo.")
+        st.markdown("Avalie cada indicador individualmente.")
         
-        # Seleção de módulos
+        # Seleção de categoria
         col1, col2 = st.columns([1, 3])
         
         with col1:
-            st.subheader("Seleção de Módulos")
-            
-            # Filtro por categoria
+            st.subheader("Seleção")
             category = st.selectbox(
                 "Categoria",
                 ["Todos", "Habitação (A)", "Saneamento (B)", "Edificação (C)", "Serviços (D)", "Renda (E)"]
@@ -184,7 +146,6 @@ def main():
             elif category == "Renda (E)":
                 selected_modules = [m for m in indicator_modules if m.startswith('E')]
             
-            # Seleção múltipla
             modules_to_evaluate = st.multiselect(
                 "Selecione os indicadores",
                 options=selected_modules,
@@ -194,7 +155,6 @@ def main():
         with col2:
             st.subheader("Entradas")
             
-            # Formulário de entrada
             with st.form("indicator_form"):
                 inputs = {}
                 
@@ -207,11 +167,9 @@ def main():
                     
                     for var_name in input_vars:
                         if var_name not in inputs:
-                            # Determinar o tipo de entrada com base no nome
                             if var_name in ['A1', 'A2', 'A3', 'A4', 'B1', 'B2', 'B3', 'B4', 'C1', 'C2', 'C3', 'E3', 'E4']:
-                                # Boolean (0-1)
                                 inputs[var_name] = st.slider(
-                                    f"{var_name}: {module_info['name'].split('_')[0]}",
+                                    f"{var_name}",
                                     min_value=0.0,
                                     max_value=1.0,
                                     value=0.0,
@@ -219,9 +177,8 @@ def main():
                                     help="0 = Não, 1 = Sim"
                                 )
                             elif var_name in ['D1', 'D2', 'D3', 'D4']:
-                                # Acesso (0-10)
                                 inputs[var_name] = st.slider(
-                                    f"{var_name}: {module_info['name'].split('_')[0]}",
+                                    f"{var_name}",
                                     min_value=0.0,
                                     max_value=10.0,
                                     value=5.0,
@@ -229,23 +186,19 @@ def main():
                                     help="0 = Baixo, 5 = Médio, 10 = Alto"
                                 )
                             elif var_name == 'E1':
-                                # Renda per capita (0-100%)
                                 inputs[var_name] = st.slider(
-                                    f"{var_name}: Renda per capita (% SM)",
+                                    f"{var_name} - Renda per capita (% SM)",
                                     min_value=0.0,
                                     max_value=100.0,
                                     value=50.0,
-                                    step=1.0,
-                                    help="Porcentagem do salário mínimo"
+                                    step=1.0
                                 )
                             elif var_name == 'E2':
-                                # Número de membros empregados (0-10)
                                 inputs[var_name] = st.slider(
-                                    f"{var_name}: Membros empregados",
+                                    f"{var_name} - Membros empregados",
                                     min_value=0,
                                     max_value=10,
-                                    value=5,
-                                    help="Número de membros da família empregados"
+                                    value=5
                                 )
                 
                 submit_button = st.form_submit_button("Avaliar Indicadores", type="primary")
@@ -254,18 +207,15 @@ def main():
             st.markdown("---")
             st.subheader("Resultados")
             
-            # Avaliar cada módulo
             results = []
             for module_name in modules_to_evaluate:
                 try:
-                    module_inputs = {k: v for k, v in inputs.items() if k == module_name}
-                    if module_inputs:
-                        result = fuzzy_system.evaluate_module(module_name, module_inputs)
-                        results.append((module_name, result))
+                    result = fuzzy_system.evaluate_module(module_name, {module_name: inputs.get(module_name, 0)})
+                    results.append((module_name, result))
                 except Exception as e:
                     st.error(f"Erro ao avaliar {module_name}: {e}")
             
-            # Exibir resultados em colunas
+            # Exibir resultados
             cols_per_row = 3
             for i in range(0, len(results), cols_per_row):
                 cols = st.columns(cols_per_row)
@@ -274,29 +224,18 @@ def main():
                         module_info = fuzzy_system.get_module_info(module_name)
                         st.markdown(f"**{module_name}**")
                         st.markdown(f"{module_info.get('name', module_name)}")
-                        badge_html = display_priority_badge(
-                            result.label.value, 
-                            result.value
-                        )
+                        badge_html = display_priority_badge(result.label.value, result.value)
                         st.markdown(badge_html, unsafe_allow_html=True)
-                        
-                        # Mostrar pertinências
-                        with st.expander("Detalhes"):
-                            for mf_name, mf_value in result.memberships.items():
-                                st.write(f"{mf_name}: {mf_value:.3f}")
     
     with tab2:
         st.header("Avaliação dos Subíndices (SIF)")
-        st.markdown("Avalie os 12 subíndices do sistema.")
-        
-        # Seleção de SIFs
-        sif_names = [m for m in fuzzy_system.get_module_names() if m.startswith('SIF')]
+        st.markdown("Avalie os subíndices do sistema.")
         
         col1, col2 = st.columns([1, 3])
         
         with col1:
             st.subheader("Seleção de SIFs")
-            
+            sif_names = [m for m in fuzzy_system.get_module_names() if m.startswith('SIF')]
             sifs_to_evaluate = st.multiselect(
                 "Selecione os SIFs",
                 options=sif_names,
@@ -309,48 +248,48 @@ def main():
             with st.form("sif_form"):
                 sif_inputs = {}
                 
-                # Para cada SIF, mostrar suas entradas
                 for sif_name in sifs_to_evaluate:
                     with st.expander(f"📋 {sif_name}"):
                         module_info = fuzzy_system.get_module_info(sif_name)
                         input_vars = module_info.get('input_vars', [])
                         
                         for var_name in input_vars:
-                            if var_name in ['A1', 'A2', 'A3', 'A4', 'B1', 'B2', 'B3', 'B4', 'C1', 'C2', 'C3', 'E3', 'E4']:
-                                sif_inputs[var_name] = st.slider(
-                                    f"{var_name}",
-                                    min_value=0.0,
-                                    max_value=1.0,
-                                    value=0.0,
-                                    step=0.1,
-                                    key=f"{sif_name}_{var_name}"
-                                )
-                            elif var_name in ['D1', 'D2', 'D3', 'D4']:
-                                sif_inputs[var_name] = st.slider(
-                                    f"{var_name}",
-                                    min_value=0.0,
-                                    max_value=10.0,
-                                    value=5.0,
-                                    step=0.1,
-                                    key=f"{sif_name}_{var_name}"
-                                )
-                            elif var_name == 'E1':
-                                sif_inputs[var_name] = st.slider(
-                                    f"{var_name}",
-                                    min_value=0.0,
-                                    max_value=100.0,
-                                    value=50.0,
-                                    step=1.0,
-                                    key=f"{sif_name}_{var_name}"
-                                )
-                            elif var_name == 'E2':
-                                sif_inputs[var_name] = st.slider(
-                                    f"{var_name}",
-                                    min_value=0,
-                                    max_value=10,
-                                    value=5,
-                                    key=f"{sif_name}_{var_name}"
-                                )
+                            if var_name not in sif_inputs:
+                                if var_name in ['A1', 'A2', 'A3', 'A4', 'B1', 'B2', 'B3', 'B4', 'C1', 'C2', 'C3', 'E3', 'E4']:
+                                    sif_inputs[var_name] = st.slider(
+                                        f"{var_name}",
+                                        min_value=0.0,
+                                        max_value=1.0,
+                                        value=0.0,
+                                        step=0.1,
+                                        key=f"{sif_name}_{var_name}"
+                                    )
+                                elif var_name in ['D1', 'D2', 'D3', 'D4']:
+                                    sif_inputs[var_name] = st.slider(
+                                        f"{var_name}",
+                                        min_value=0.0,
+                                        max_value=10.0,
+                                        value=5.0,
+                                        step=0.1,
+                                        key=f"{sif_name}_{var_name}"
+                                    )
+                                elif var_name == 'E1':
+                                    sif_inputs[var_name] = st.slider(
+                                        f"{var_name}",
+                                        min_value=0.0,
+                                        max_value=100.0,
+                                        value=50.0,
+                                        step=1.0,
+                                        key=f"{sif_name}_{var_name}"
+                                    )
+                                elif var_name == 'E2':
+                                    sif_inputs[var_name] = st.slider(
+                                        f"{var_name}",
+                                        min_value=0,
+                                        max_value=10,
+                                        value=5,
+                                        key=f"{sif_name}_{var_name}"
+                                    )
                 
                 submit_sif_button = st.form_submit_button("Avaliar SIFs", type="primary")
         
@@ -362,8 +301,8 @@ def main():
             for sif_name in sifs_to_evaluate:
                 try:
                     module = fuzzy_system.get_module(sif_name)
-                    required_inputs = {var.name: sif_inputs.get(var.name, 0) 
-                                      for var in module.input_vars}
+                    required_inputs = {var_name: sif_inputs.get(var_name, 0) 
+                                      for var_name in module.input_vars.keys()}
                     result = fuzzy_system.evaluate_module(sif_name, required_inputs)
                     sif_results[sif_name] = result
                 except Exception as e:
@@ -378,10 +317,7 @@ def main():
                     if result:
                         with cols[j]:
                             st.markdown(f"**{sif_name}**")
-                            badge_html = display_priority_badge(
-                                result.label.value, 
-                                result.value
-                            )
+                            badge_html = display_priority_badge(result.label.value, result.value)
                             st.markdown(badge_html, unsafe_allow_html=True)
                             
                             # Gráfico de pertinência
@@ -409,7 +345,6 @@ def main():
             if 'sif_results' in st.session_state:
                 st.info("Resultados dos SIFs já calculados na aba anterior.")
                 
-                # Mostrar resultados armazenados
                 for sif_name, score in st.session_state.sif_results.items():
                     st.write(f"{sif_name}: {score:.2f}")
                 
@@ -421,10 +356,7 @@ def main():
                     
                     col_a, col_b = st.columns([1, 2])
                     with col_a:
-                        badge_html = display_priority_badge(
-                            final_result.label.value, 
-                            final_result.value
-                        )
+                        badge_html = display_priority_badge(final_result.label.value, final_result.value)
                         st.markdown(badge_html, unsafe_allow_html=True)
                     
                     with col_b:
@@ -447,9 +379,7 @@ def main():
             
             with st.form("manual_sif_form"):
                 manual_sif_inputs = {}
-                for sif_name in ['SIF1_HAP', 'SIF3_DEH', 'SIF4_SAB', 'SIF5_CIU', 
-                                'SIF6_CED', 'SIF7_SGC', 'SIF8_ASP', 'SIF9_RED', 
-                                'SIF10_PTR', 'SIF11_PSE']:
+                for sif_name in ['SIF1_HAP', 'SIF3_DEH', 'SIF4_SAB', 'SIF6_CED', 'SIF11_PSE']:
                     manual_sif_inputs[sif_name] = st.slider(
                         sif_name,
                         min_value=0.0,
@@ -469,10 +399,7 @@ def main():
                 
                 col_a, col_b = st.columns([1, 2])
                 with col_a:
-                    badge_html = display_priority_badge(
-                        final_result.label.value, 
-                        final_result.value
-                    )
+                    badge_html = display_priority_badge(final_result.label.value, final_result.value)
                     st.markdown(badge_html, unsafe_allow_html=True)
                 
                 with col_b:
@@ -498,38 +425,38 @@ def main():
         
         O sistema é organizado em três níveis:
         
-        #### 📌 Nível 1: Indicadores Individuais
+        #### 📌 Nível 1: Indicadores Individuais (14)
         
         **Habitação (A):**
-        - **A1**: Domicílios rústicos
-        - **A2**: Domicílios improvisados
-        - **A3**: Unidades domésticas conviventes deficit
-        - **A4**: Domicílios Cômodos
+        - **A1**: Domicílios rústicos (0-1)
+        - **A2**: Domicílios improvisados (0-1)
+        - **A3**: Unidades domésticas conviventes deficit (0-1)
+        - **A4**: Domicílios Cômodos (0-1)
         
         **Saneamento Básico (B):**
-        - **B1**: Inadequação de Esgotamento sanitário
-        - **B2**: Inadequação da Coleta de lixo
-        - **B3**: Inadequação de Abastecimento de água
-        - **B4**: Ausência de iluminação pública
+        - **B1**: Inadequação de Esgotamento sanitário (0-1)
+        - **B2**: Inadequação da Coleta de lixo (0-1)
+        - **B3**: Inadequação de Abastecimento de água (0-1)
+        - **B4**: Ausência de iluminação pública (0-1)
         
         **Carência Edílica (C):**
-        - **C1**: Piso ou cobertura inadequados
-        - **C2**: Inexistência de banheiro exclusivo
-        - **C3**: Cômodos igual a dormitórios
+        - **C1**: Piso ou cobertura inadequados (0-1)
+        - **C2**: Inexistência de banheiro exclusivo (0-1)
+        - **C3**: Cômodos igual a dormitórios (0-1)
         
         **Serviços (D):**
-        - **D1**: Acesso à Educação
-        - **D2**: Acesso à Saúde
-        - **D3**: Acesso a transporte
-        - **D4**: Conectividade Digital
+        - **D1**: Acesso à Educação (0-10)
+        - **D2**: Acesso à Saúde (0-10)
+        - **D3**: Acesso a transporte (0-10)
+        - **D4**: Conectividade Digital (0-10)
         
         **Renda (E):**
-        - **E1**: Renda per capita
-        - **E2**: Número de membros empregados
-        - **E3**: Famílias atendidas pelo PBF e Auxílio Brasil
-        - **E4**: Famílias beneficiárias do BPC
+        - **E1**: Renda per capita (0-100%)
+        - **E2**: Número de membros empregados (0-10)
+        - **E3**: Famílias atendidas pelo PBF (0-1)
+        - **E4**: Famílias beneficiárias do BPC (0-1)
         
-        #### 📊 Nível 2: Subíndices (SIF)
+        #### 📊 Nível 2: Subíndices (SIF) - 10 implementados
         
         | SIF | Nome | Indicadores |
         |-----|------|-------------|
@@ -537,20 +464,18 @@ def main():
         | SIF 2 | COA - Coabitação | A4 |
         | SIF 3 | DEH - Déficit Habitacional | A1, A2, A3 |
         | SIF 4 | SAB - Saneamento Básico | B1, B2, B3, B4 |
-        | SIF 5 | CIU - Carências de Infraestrutura Urbana | B1, B2, B3, B4 |
         | SIF 6 | CED - Carência Edílica | C1, C2, C3 |
         | SIF 7 | SGC - Serviços de Garantia Constitucional | D1, D2, D3, D4 |
         | SIF 8 | ASP - Acesso a Serviços Prioritários | D1, D2, D3 |
         | SIF 9 | RED - Renda Direta | E1, E2 |
         | SIF 10 | PTR - Programas de Transferência de Renda | E3, E4 |
         | SIF 11 | PSE - Perfil Socioeconômico | E1, E2, E3, E4 |
-        | SIF 12 | IDU - Inadequação de Domicílios Urbanos | C1, C2, C3 |
         
         #### 🎯 Nível 3: Índice Final
         
         **ISF - RMs**: Índice de Satisfação das Necessidades Habitacionais
         
-        Agrega os principais SIFs para gerar um score final de prioridade.
+        Agrega os principais SIFs (SIF1, SIF3, SIF4, SIF6, SIF11) para gerar um score final.
         
         ---
         
@@ -558,17 +483,17 @@ def main():
         
         | Nível | Score | Significado |
         |-------|-------|-------------|
-        | 🟢 Baixa | 0-35 | Prioridade normal |
-        | 🟡 Média | 35-65 | Atenção moderada |
-        | 🟠 Alta | 65-85 | Prioridade elevada |
-        | 🔴 Urgente | 85-100 | Intervenção imediata |
+        | 🟢 Baixa | 0-39 | Prioridade normal |
+        | 🟡 Média | 40-69 | Atenção moderada |
+        | 🟠 Alta | 70-89 | Prioridade elevada |
+        | 🔴 Urgente | 90-100 | Intervenção imediata |
         
         ---
         
         ### 🔧 Como Usar o Sistema
         
-        1. **Aba Simulação Individual**: Avalie indicadores específicos (A1, B2, etc.)
-        2. **Aba Subíndices (SIF)**: Avalie os 12 subíndices do sistema
+        1. **Aba Indicadores Individuais**: Avalie indicadores específicos (A1, B2, etc.)
+        2. **Aba Subíndices (SIF)**: Avalie os subíndices do sistema
         3. **Aba Índice Final (ISF)**: Calcule o índice final com base nos SIFs
         
         ---
@@ -576,11 +501,7 @@ def main():
         ### 📚 Sobre Lógica Fuzzy
         
         A lógica fuzzy permite lidar com incertezas e conceitos vagos, sendo ideal para 
-        sistemas de decisão baseados em critérios subjetivos. Este sistema implementa:
-        
-        1. **Fuzzificação**: Conversão de valores numéricos em graus de pertinência
-        2. **Inferência**: Aplicação de regras fuzzy para determinar a prioridade
-        3. **Defuzzificação**: Conversão do resultado fuzzy em valor interpretável
+        sistemas de decisão baseados em critérios subjetivos.
         
         ---
         
@@ -590,14 +511,6 @@ def main():
         - **scikit-fuzzy**: Biblioteca para implementação de sistemas fuzzy
         - **NumPy**: Biblioteca para computação numérica
         - **Matplotlib**: Biblioteca para visualização de dados
-        
-        ---
-        
-        ### 📄 Referências
-        
-        - Zadeh, L. A. (1965). Fuzzy sets. Information and Control, 8(3), 338-353.
-        - Ross, T. J. (2010). Fuzzy Logic with Engineering Applications. Wiley.
-        - scikit-fuzzy documentation: https://pythonhosted.org/scikit-fuzzy/
         """)
 
 
