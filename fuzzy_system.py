@@ -4,9 +4,10 @@ Sistema Fuzzy Modular para Diagnóstico de Necessidades Habitacionais
 Baseado no esquema do grupo com as especificações exatas do MATLAB:
 - SIF 1 (HAP): DOM_RUSTICOS + DOM_IMPROVISADOS -> HAB_PRECARIA
 - SIF 2 (COA): UNID_DOM_CONV + DOM_COMODOS -> COA
-- SIF 3 (DEH): Hab_Precária + Coabitação -> DEH
+- SIF 3 (DEH): Hab_Precária (HAP) + Coabitação (COA) -> DEH
 
 Cada módulo pode ser simulado individualmente ou em conjunto.
+Regras ajustadas conforme especificação do usuário.
 """
 
 import numpy as np
@@ -53,9 +54,9 @@ def create_percentage_var_4mf(name: str) -> ctrl.Antecedent:
     universe = np.arange(0, 101, 1)
     var = ctrl.Antecedent(universe, name)
     var['Ideal'] = fuzz.trimf(var.universe, [0, 0, 33])
-    var['Aceitável'] = fuzz.trimf(var.universe, [0, 33, 66])
-    var['Parcialmente aceitável'] = fuzz.trimf(var.universe, [33, 66, 90])
-    var['Inaceitável'] = fuzz.trapmf(var.universe, [66, 100, 100, 100])
+    var['Aceitavel'] = fuzz.trimf(var.universe, [0, 33, 66])
+    var['Parcialmente_aceitavel'] = fuzz.trimf(var.universe, [33, 66, 90])
+    var['Inaceitavel'] = fuzz.trapmf(var.universe, [66, 100, 100, 100])
     return var
 
 
@@ -63,11 +64,11 @@ def create_percentage_var_5mf(name: str) -> ctrl.Antecedent:
     """Cria variável com 5 funções de pertinência: Muito Baixa, Baixa, Média, Alta, Muito Alta"""
     universe = np.arange(0, 101, 1)
     var = ctrl.Antecedent(universe, name)
-    var['Muito baixa'] = fuzz.trimf(var.universe, [0, 0, 20])
+    var['Muito_baixa'] = fuzz.trimf(var.universe, [0, 0, 20])
     var['Baixa'] = fuzz.trimf(var.universe, [0, 20, 40])
-    var['Média'] = fuzz.trimf(var.universe, [20, 40, 60])
+    var['Media'] = fuzz.trimf(var.universe, [20, 40, 60])
     var['Alta'] = fuzz.trimf(var.universe, [40, 60, 80])
-    var['Muito Alta'] = fuzz.trapmf(var.universe, [60, 100, 100, 100])
+    var['Muito_Alta'] = fuzz.trapmf(var.universe, [60, 100, 100, 100])
     return var
 
 
@@ -75,25 +76,46 @@ def create_hap_output_var(name: str) -> ctrl.Consequent:
     """Cria variável de saída para HAP: 6 níveis"""
     universe = np.arange(0, 101, 1)
     var = ctrl.Consequent(universe, name)
-    var['Muito Baixa'] = fuzz.trimf(var.universe, [0, 0, 20])
+    var['Muito_Baixa'] = fuzz.trimf(var.universe, [0, 0, 20])
     var['Baixa'] = fuzz.trimf(var.universe, [0, 20, 40])
-    var['Média'] = fuzz.trimf(var.universe, [20, 40, 60])
+    var['Media'] = fuzz.trimf(var.universe, [20, 40, 60])
     var['Alta'] = fuzz.trimf(var.universe, [40, 60, 80])
-    var['Muito Alta'] = fuzz.trimf(var.universe, [60, 80, 100])
-    var['Altíssima'] = fuzz.trimf(var.universe, [80, 100, 100])
+    var['Muito_Alta'] = fuzz.trimf(var.universe, [60, 80, 100])
+    var['Altissima'] = fuzz.trimf(var.universe, [80, 100, 100])
     return var
 
 
 def create_coa_output_var(name: str) -> ctrl.Consequent:
-    """Cria variável de saída para COA: 6 níveis (CORRIGIDO)"""
+    """Cria variável de saída para COA: 6 níveis"""
     universe = np.arange(0, 101, 1)
     var = ctrl.Consequent(universe, name)
-    var['Muito baixa'] = fuzz.trimf(var.universe, [0, 0, 20])
+    var['Muito_baixa'] = fuzz.trimf(var.universe, [0, 0, 20])
     var['baixa'] = fuzz.trimf(var.universe, [0, 20, 40])
-    var['média'] = fuzz.trimf(var.universe, [20, 40, 60])
+    var['media'] = fuzz.trimf(var.universe, [20, 40, 60])
     var['alta'] = fuzz.trimf(var.universe, [40, 60, 80])
-    var['muito alta'] = fuzz.trimf(var.universe, [60, 80, 100])
-    var['altíssima'] = fuzz.trimf(var.universe, [80, 100, 100])
+    var['muito_alta'] = fuzz.trimf(var.universe, [60, 80, 100])
+    var['altissima'] = fuzz.trimf(var.universe, [80, 100, 100])
+    return var
+
+
+def create_deh_input_var(name: str) -> ctrl.Antecedent:
+    """Cria variável de entrada para DEH: 6 níveis (para HAP e COA)
+    
+    Note: As entradas do SIF3_DEH são os resultados dos SIFs 1 e 2 (0-100)
+    que já são saídas fuzzy, então precisam ter as mesmas funções de pertinência
+    que as saídas dos SIFs 1 e 2.
+    """
+    universe = np.arange(0, 101, 1)
+    var = ctrl.Antecedent(universe, name)
+    # SIF1_HAP tem 6 níveis: Muito_Baixa, Baixa, Media, Alta, Muito_Alta, Altissima
+    # SIF2_COA tem 6 níveis: Muito_baixa, baixa, media, alta, muito_alta, altissima
+    # Vamos usar os mesmos termos para compatibilidade
+    var['Muito_baixa'] = fuzz.trimf(var.universe, [0, 0, 20])
+    var['baixa'] = fuzz.trimf(var.universe, [0, 20, 40])
+    var['media'] = fuzz.trimf(var.universe, [20, 40, 60])
+    var['alta'] = fuzz.trimf(var.universe, [40, 60, 80])
+    var['muito_alta'] = fuzz.trimf(var.universe, [60, 80, 100])
+    var['altissima'] = fuzz.trimf(var.universe, [80, 100, 100])
     return var
 
 
@@ -101,11 +123,11 @@ def create_deh_output_var(name: str) -> ctrl.Consequent:
     """Cria variável de saída para DEH: 5 níveis"""
     universe = np.arange(0, 101, 1)
     var = ctrl.Consequent(universe, name)
-    var['Muito baixo'] = fuzz.trapmf(var.universe, [0, 0, 15, 30])
+    var['Muito_baixo'] = fuzz.trapmf(var.universe, [0, 0, 15, 30])
     var['Baixo'] = fuzz.trimf(var.universe, [15, 30, 45])
-    var['Médio'] = fuzz.trimf(var.universe, [30, 45, 60])
+    var['Medio'] = fuzz.trimf(var.universe, [30, 45, 60])
     var['Alto'] = fuzz.trimf(var.universe, [45, 60, 75])
-    var['Muito alto'] = fuzz.trapmf(var.universe, [60, 75, 100, 100])
+    var['Muito_alto'] = fuzz.trapmf(var.universe, [60, 75, 100, 100])
     return var
 
 
@@ -123,6 +145,7 @@ class FuzzyModule:
         self.input_vars = input_vars
         self.output_var = output_var
         self.input_labels = input_labels  # Nomes das entradas para o inputs()
+        self.output_label = output_var.label  # Nome da saída
         self.ctrl_system = ctrl.ControlSystem(rules)
         self.simulation = ctrl.ControlSystemSimulation(self.ctrl_system)
     
@@ -134,75 +157,76 @@ class FuzzyModule:
             if label in inputs:
                 simulation_inputs[label] = inputs[label]
         
-        self.simulation.inputs(simulation_inputs)
+        # Criar uma nova simulação para evitar conflitos
+        sim = ctrl.ControlSystemSimulation(self.ctrl_system)
+        sim.inputs(simulation_inputs)
+        
         try:
-            self.simulation.compute()
+            sim.compute()
+            # Obter o valor de saída
+            if self.output_label in sim.output:
+                value = sim.output[self.output_label]
+            else:
+                # Se não encontrar pelo label, tentar pelo nome da variável
+                value = sim.output.get(self.output_var.label, 0)
         except Exception as e:
             return FuzzyResult(value=0, label=PriorityLevel.BAIXO, 
                              memberships={}, inputs=inputs)
         
-        value = self.simulation.output[self.output_var.label]
-        
-        # Calcular pertinências
+        # Calcular pertinências usando os termos do output_var
         memberships = {}
-        for mf_name in [mf for mf in dir(self.output_var) if not mf.startswith('_') and mf not in ['label', 'universe', 'mf']]:
-            try:
-                mf = getattr(self.output_var, mf_name)
-                if hasattr(mf, 'mf'):
-                    memberships[mf_name] = float(fuzz.interp_membership(
-                        self.output_var.universe, mf.mf, value
-                    ))
-            except:
-                pass
+        for mf_name, mf in self.output_var.terms.items():
+            memberships[mf_name] = float(fuzz.interp_membership(
+                self.output_var.universe, mf.mf, value
+            ))
         
-        # Classificar
+        # Classificar com base nas pertinências
         label = self._classify_priority(value, memberships)
         
         return FuzzyResult(value=value, label=label, memberships=memberships, inputs=inputs)
     
     def _classify_priority(self, value: float, memberships: Dict[str, float]) -> PriorityLevel:
-        """Classifica o nível de prioridade."""
-        # Verificar pertinências
-        if 'Altíssima' in memberships and memberships['Altíssima'] > 0.5:
+        """Classifica o nível de prioridade com base nas pertinências."""
+        # Ordenar por pertinência (maior primeiro)
+        sorted_memberships = sorted(memberships.items(), key=lambda x: x[1], reverse=True)
+        
+        # Retornar o nível com maior pertinência
+        if sorted_memberships:
+            highest_mf = sorted_memberships[0][0]
+            
+            # Mapear para PriorityLevel
+            mapping = {
+                'Muito_Baixa': PriorityLevel.MUITO_BAIXO,
+                'Muito_baixa': PriorityLevel.MUITO_BAIXO,
+                'Baixa': PriorityLevel.BAIXO,
+                'baixa': PriorityLevel.BAIXO,
+                'Media': PriorityLevel.MEDIO,
+                'media': PriorityLevel.MEDIO,
+                'Medio': PriorityLevel.MEDIO,
+                'Alta': PriorityLevel.ALTO,
+                'alta': PriorityLevel.ALTO,
+                'Muito_Alta': PriorityLevel.MUITO_ALTO,
+                'muito_alta': PriorityLevel.MUITO_ALTO,
+                'Muito_alto': PriorityLevel.MUITO_ALTO,
+                'Altissima': PriorityLevel.ALTISSIMA,
+                'altissima': PriorityLevel.ALTISSIMA,
+                'Muito_baixo': PriorityLevel.MUITO_BAIXO,
+                'Baixo': PriorityLevel.BAIXO,
+            }
+            
+            return mapping.get(highest_mf, PriorityLevel.MEDIO)
+        
+        # Fallback por valor
+        if value >= 80:
             return PriorityLevel.ALTISSIMA
-        elif 'altíssima' in memberships and memberships['altíssima'] > 0.5:
-            return PriorityLevel.ALTISSIMA
-        elif 'Muito Alta' in memberships and memberships['Muito Alta'] > 0.5:
+        elif value >= 60:
             return PriorityLevel.MUITO_ALTO
-        elif 'muito alta' in memberships and memberships['muito alta'] > 0.5:
-            return PriorityLevel.MUITO_ALTO
-        elif 'Muito alto' in memberships and memberships['Muito alto'] > 0.5:
-            return PriorityLevel.MUITO_ALTO
-        elif 'Alto' in memberships and memberships['Alto'] > 0.5:
+        elif value >= 40:
             return PriorityLevel.ALTO
-        elif 'alta' in memberships and memberships['alta'] > 0.5:
-            return PriorityLevel.ALTO
-        elif 'Média' in memberships and memberships['Média'] > 0.5:
+        elif value >= 20:
             return PriorityLevel.MEDIO
-        elif 'média' in memberships and memberships['média'] > 0.5:
-            return PriorityLevel.MEDIO
-        elif 'Baixa' in memberships and memberships['Baixa'] > 0.5:
-            return PriorityLevel.BAIXO
-        elif 'baixa' in memberships and memberships['baixa'] > 0.5:
-            return PriorityLevel.BAIXO
-        elif 'Muito Baixa' in memberships and memberships['Muito Baixa'] > 0.5:
-            return PriorityLevel.MUITO_BAIXO
-        elif 'Muito baixo' in memberships and memberships['Muito baixo'] > 0.5:
-            return PriorityLevel.MUITO_BAIXO
-        elif 'muito baixa' in memberships and memberships['muito baixa'] > 0.5:
-            return PriorityLevel.MUITO_BAIXO
         else:
-            # Classificar por valor
-            if value >= 80:
-                return PriorityLevel.ALTISSIMA
-            elif value >= 60:
-                return PriorityLevel.MUITO_ALTO
-            elif value >= 40:
-                return PriorityLevel.ALTO
-            elif value >= 20:
-                return PriorityLevel.MEDIO
-            else:
-                return PriorityLevel.BAIXO
+            return PriorityLevel.BAIXO
 
 
 # ============================================================================
@@ -238,39 +262,42 @@ class HousingFuzzySystem:
         print("✅ Indicadores individuais carregados")
     
     def _init_sifs(self):
-        """Inicializa os subíndices (SIF)."""
+        """Inicializa os subíndices (SIF) com regras ajustadas."""
         
         # ========================================================================
         # SIF 1 - HAP (Habitação Precária)
-        # Entradas: DOM_RUSTICOS (A1), DOM_IMPROVISADOS (A2)
+        # Entradas: DOM_RUSTICOS, DOM_IMPROVISADOS
         # Saída: HAB_PRECARIA
+        # Regras: 11 regras conforme especificação do usuário
         # ========================================================================
         dom_rusticos = create_percentage_var_4mf('DOM_RUSTICOS')
         dom_improvisados = create_percentage_var_4mf('DOM_IMPROVISADOS')
         hab_precarria = create_hap_output_var('HAB_PRECARIA')
         
-        # Regras do SIF 1 (16 regras do MATLAB)
+        # Regras do SIF 1 (11 regras conforme especificação)
         hap_rules = [
-            # DOM_RUSTICOS = Ideal (1)
-            ctrl.Rule(dom_rusticos['Ideal'] & dom_improvisados['Ideal'], hab_precarria['Muito Baixa']),
-            ctrl.Rule(dom_rusticos['Ideal'] & dom_improvisados['Aceitável'], hab_precarria['Muito Baixa']),
-            ctrl.Rule(dom_rusticos['Ideal'] & dom_improvisados['Parcialmente aceitável'], hab_precarria['Baixa']),
-            ctrl.Rule(dom_rusticos['Ideal'] & dom_improvisados['Inaceitável'], hab_precarria['Média']),
-            # DOM_RUSTICOS = Aceitável (2)
-            ctrl.Rule(dom_rusticos['Aceitável'] & dom_improvisados['Ideal'], hab_precarria['Muito Baixa']),
-            ctrl.Rule(dom_rusticos['Aceitável'] & dom_improvisados['Aceitável'], hab_precarria['Baixa']),
-            ctrl.Rule(dom_rusticos['Aceitável'] & dom_improvisados['Parcialmente aceitável'], hab_precarria['Alta']),
-            ctrl.Rule(dom_rusticos['Aceitável'] & dom_improvisados['Inaceitável'], hab_precarria['Muito Alta']),
-            # DOM_RUSTICOS = Parcialmente aceitável (3)
-            ctrl.Rule(dom_rusticos['Parcialmente aceitável'] & dom_improvisados['Ideal'], hab_precarria['Baixa']),
-            ctrl.Rule(dom_rusticos['Parcialmente aceitável'] & dom_improvisados['Aceitável'], hab_precarria['Alta']),
-            ctrl.Rule(dom_rusticos['Parcialmente aceitável'] & dom_improvisados['Parcialmente aceitável'], hab_precarria['Alta']),
-            ctrl.Rule(dom_rusticos['Parcialmente aceitável'] & dom_improvisados['Inaceitável'], hab_precarria['Muito Alta']),
-            # DOM_RUSTICOS = Inaceitável (4)
-            ctrl.Rule(dom_rusticos['Inaceitável'] & dom_improvisados['Ideal'], hab_precarria['Média']),
-            ctrl.Rule(dom_rusticos['Inaceitável'] & dom_improvisados['Aceitável'], hab_precarria['Muito Alta']),
-            ctrl.Rule(dom_rusticos['Inaceitável'] & dom_improvisados['Parcialmente aceitável'], hab_precarria['Muito Alta']),
-            ctrl.Rule(dom_rusticos['Inaceitável'] & dom_improvisados['Inaceitável'], hab_precarria['Altíssima']),
+            # Regra 1: Ideal + Ideal -> Muito Baixa
+            ctrl.Rule(dom_rusticos['Ideal'] & dom_improvisados['Ideal'], hab_precarria['Muito_Baixa']),
+            # Regra 2: Ideal + Aceitável -> Muito Baixa
+            ctrl.Rule(dom_rusticos['Ideal'] & dom_improvisados['Aceitavel'], hab_precarria['Muito_Baixa']),
+            # Regra 3: Ideal + Parcialmente aceitável -> Baixa
+            ctrl.Rule(dom_rusticos['Ideal'] & dom_improvisados['Parcialmente_aceitavel'], hab_precarria['Baixa']),
+            # Regra 4: Ideal + Inaceitável -> Média
+            ctrl.Rule(dom_rusticos['Ideal'] & dom_improvisados['Inaceitavel'], hab_precarria['Media']),
+            # Regra 5: Aceitável + Ideal -> Muito Baixa
+            ctrl.Rule(dom_rusticos['Aceitavel'] & dom_improvisados['Ideal'], hab_precarria['Muito_Baixa']),
+            # Regra 6: Aceitável + Aceitável -> Média
+            ctrl.Rule(dom_rusticos['Aceitavel'] & dom_improvisados['Aceitavel'], hab_precarria['Media']),
+            # Regra 7: Aceitável + Parcialmente aceitável -> Alta
+            ctrl.Rule(dom_rusticos['Aceitavel'] & dom_improvisados['Parcialmente_aceitavel'], hab_precarria['Alta']),
+            # Regra 8: Aceitável + Inaceitável -> Alta
+            ctrl.Rule(dom_rusticos['Aceitavel'] & dom_improvisados['Inaceitavel'], hab_precarria['Alta']),
+            # Regra 9: Parcialmente aceitável + Ideal -> Baixa
+            ctrl.Rule(dom_rusticos['Parcialmente_aceitavel'] & dom_improvisados['Ideal'], hab_precarria['Baixa']),
+            # Regra 10: Parcialmente aceitável + Aceitável -> Alta
+            ctrl.Rule(dom_rusticos['Parcialmente_aceitavel'] & dom_improvisados['Aceitavel'], hab_precarria['Alta']),
+            # Regra 11: Parcialmente aceitável + Parcialmente aceitável -> Alta
+            ctrl.Rule(dom_rusticos['Parcialmente_aceitavel'] & dom_improvisados['Parcialmente_aceitavel'], hab_precarria['Alta']),
         ]
         
         self.modules['SIF1_HAP'] = FuzzyModule(
@@ -283,35 +310,48 @@ class HousingFuzzySystem:
         
         # ========================================================================
         # SIF 2 - COA (Coabitação) - CORRIGIDO
-        # Entradas: UNID_DOM_CONV (A3), DOM_COMODOS (A4)
+        # Entradas: UNID_DOM_CONV, DOM_COMODOS
         # Saída: COA
+        # Regras: 16 regras conforme especificação do usuário
         # ========================================================================
         unid_dom_conv = create_percentage_var_4mf('UNID_DOM_CONV')
         dom_comodos = create_percentage_var_4mf('DOM_COMODOS')
         coa = create_coa_output_var('COA')
         
-        # Regras do SIF 2 (16 regras do MATLAB CORRIGIDO)
+        # Regras do SIF 2 (16 regras conforme especificação)
         coa_rules = [
-            # UNID_DOM_CONV = Ideal (1)
-            ctrl.Rule(unid_dom_conv['Ideal'] & dom_comodos['Ideal'], coa['Muito baixa']),
-            ctrl.Rule(unid_dom_conv['Ideal'] & dom_comodos['Aceitável'], coa['Muito baixa']),
-            ctrl.Rule(unid_dom_conv['Ideal'] & dom_comodos['Parcialmente aceitável'], coa['baixa']),
-            ctrl.Rule(unid_dom_conv['Ideal'] & dom_comodos['Inaceitável'], coa['média']),
-            # UNID_DOM_CONV = Aceitável (2)
-            ctrl.Rule(unid_dom_conv['Aceitável'] & dom_comodos['Ideal'], coa['Muito baixa']),
-            ctrl.Rule(unid_dom_conv['Aceitável'] & dom_comodos['Aceitável'], coa['baixa']),
-            ctrl.Rule(unid_dom_conv['Aceitável'] & dom_comodos['Parcialmente aceitável'], coa['alta']),
-            ctrl.Rule(unid_dom_conv['Aceitável'] & dom_comodos['Inaceitável'], coa['muito alta']),
-            # UNID_DOM_CONV = Parcialmente aceitável (3)
-            ctrl.Rule(unid_dom_conv['Parcialmente aceitável'] & dom_comodos['Ideal'], coa['baixa']),
-            ctrl.Rule(unid_dom_conv['Parcialmente aceitável'] & dom_comodos['Aceitável'], coa['alta']),
-            ctrl.Rule(unid_dom_conv['Parcialmente aceitável'] & dom_comodos['Parcialmente aceitável'], coa['alta']),
-            ctrl.Rule(unid_dom_conv['Parcialmente aceitável'] & dom_comodos['Inaceitável'], coa['muito alta']),
-            # UNID_DOM_CONV = Inaceitável (4)
-            ctrl.Rule(unid_dom_conv['Inaceitável'] & dom_comodos['Ideal'], coa['média']),
-            ctrl.Rule(unid_dom_conv['Inaceitável'] & dom_comodos['Aceitável'], coa['muito alta']),
-            ctrl.Rule(unid_dom_conv['Inaceitável'] & dom_comodos['Parcialmente aceitável'], coa['muito alta']),
-            ctrl.Rule(unid_dom_conv['Inaceitável'] & dom_comodos['Inaceitável'], coa['altíssima']),
+            # Regra 1: Ideal + Ideal -> Muito baixa
+            ctrl.Rule(unid_dom_conv['Ideal'] & dom_comodos['Ideal'], coa['Muito_baixa']),
+            # Regra 2: Ideal + Aceitável -> Muito baixa
+            ctrl.Rule(unid_dom_conv['Ideal'] & dom_comodos['Aceitavel'], coa['Muito_baixa']),
+            # Regra 3: Ideal + Parcialmente aceitável -> Baixa
+            ctrl.Rule(unid_dom_conv['Ideal'] & dom_comodos['Parcialmente_aceitavel'], coa['baixa']),
+            # Regra 4: Ideal + Inaceitável -> Média
+            ctrl.Rule(unid_dom_conv['Ideal'] & dom_comodos['Inaceitavel'], coa['media']),
+            # Regra 5: Aceitável + Ideal -> Muito baixa
+            ctrl.Rule(unid_dom_conv['Aceitavel'] & dom_comodos['Ideal'], coa['Muito_baixa']),
+            # Regra 6: Aceitável + Aceitável -> Média
+            ctrl.Rule(unid_dom_conv['Aceitavel'] & dom_comodos['Aceitavel'], coa['media']),
+            # Regra 7: Aceitável + Parcialmente aceitável -> Alta
+            ctrl.Rule(unid_dom_conv['Aceitavel'] & dom_comodos['Parcialmente_aceitavel'], coa['alta']),
+            # Regra 8: Aceitável + Inaceitável -> Muito alta
+            ctrl.Rule(unid_dom_conv['Aceitavel'] & dom_comodos['Inaceitavel'], coa['muito_alta']),
+            # Regra 9: Parcialmente aceitável + Ideal -> Baixa
+            ctrl.Rule(unid_dom_conv['Parcialmente_aceitavel'] & dom_comodos['Ideal'], coa['baixa']),
+            # Regra 10: Parcialmente aceitável + Aceitável -> Alta
+            ctrl.Rule(unid_dom_conv['Parcialmente_aceitavel'] & dom_comodos['Aceitavel'], coa['alta']),
+            # Regra 11: Parcialmente aceitável + Parcialmente aceitável -> Alta
+            ctrl.Rule(unid_dom_conv['Parcialmente_aceitavel'] & dom_comodos['Parcialmente_aceitavel'], coa['alta']),
+            # Regra 12: Parcialmente aceitável + Inaceitável -> Muito alta
+            ctrl.Rule(unid_dom_conv['Parcialmente_aceitavel'] & dom_comodos['Inaceitavel'], coa['muito_alta']),
+            # Regra 13: Inaceitável + Ideal -> Média
+            ctrl.Rule(unid_dom_conv['Inaceitavel'] & dom_comodos['Ideal'], coa['media']),
+            # Regra 14: Inaceitável + Aceitável -> Muito alta
+            ctrl.Rule(unid_dom_conv['Inaceitavel'] & dom_comodos['Aceitavel'], coa['muito_alta']),
+            # Regra 15: Inaceitável + Parcialmente aceitável -> Muito alta
+            ctrl.Rule(unid_dom_conv['Inaceitavel'] & dom_comodos['Parcialmente_aceitavel'], coa['muito_alta']),
+            # Regra 16: Inaceitável + Inaceitável -> Altíssima
+            ctrl.Rule(unid_dom_conv['Inaceitavel'] & dom_comodos['Inaceitavel'], coa['altissima']),
         ]
         
         self.modules['SIF2_COA'] = FuzzyModule(
@@ -324,56 +364,91 @@ class HousingFuzzySystem:
         
         # ========================================================================
         # SIF 3 - DEH (Déficit Habitacional)
-        # Entradas: Hab_Precária (SIF1), Coabitação (SIF2)
+        # Entradas: Hab_Precária (HAP), Coabitação (COA)
         # Saída: DEH
+        # Regras: 25 regras conforme especificação do usuário
+        # NOTE: As entradas usam os termos das saídas dos SIFs 1 e 2
+        # SIF1_HAP saída: Muito_Baixa, Baixa, Media, Alta, Muito_Alta, Altissima
+        # SIF2_COA saída: Muito_baixa, baixa, media, alta, muito_alta, altissima
+        # Vamos mapear para as entradas do SIF3_DEH
         # ========================================================================
-        hab_precarria_deh = create_percentage_var_5mf('Hab_Precária')
-        coabitacao_deh = create_percentage_var_5mf('Coabitação')
+        hab_precarria_deh = create_deh_input_var('Hab_Precaria')
+        coabitacao_deh = create_deh_input_var('Coabitacao')
         deh = create_deh_output_var('DEH')
         
-        # Regras do SIF 3 (25 regras do MATLAB)
+        # Regras do SIF 3 (25 regras conforme especificação)
+        # Note: A especificação usa "Muito Alta" e "Muito alta", mas as entradas
+        # têm "Altissima" para valores altos. Vamos ajustar para usar os termos
+        # corretos das entradas.
         deh_rules = [
-            # Hab_Precária = Muito baixa (1)
-            ctrl.Rule(hab_precarria_deh['Muito baixa'] & coabitacao_deh['Muito baixa'], deh['Muito baixo']),
-            ctrl.Rule(hab_precarria_deh['Muito baixa'] & coabitacao_deh['Baixa'], deh['Muito baixo']),
-            ctrl.Rule(hab_precarria_deh['Muito baixa'] & coabitacao_deh['Média'], deh['Baixo']),
-            ctrl.Rule(hab_precarria_deh['Muito baixa'] & coabitacao_deh['Alta'], deh['Médio']),
-            ctrl.Rule(hab_precarria_deh['Muito baixa'] & coabitacao_deh['Muito Alta'], deh['Médio']),
-            # Hab_Precária = Baixa (2)
-            ctrl.Rule(hab_precarria_deh['Baixa'] & coabitacao_deh['Muito baixa'], deh['Baixo']),
-            ctrl.Rule(hab_precarria_deh['Baixa'] & coabitacao_deh['Baixa'], deh['Baixo']),
-            ctrl.Rule(hab_precarria_deh['Baixa'] & coabitacao_deh['Média'], deh['Médio']),
-            ctrl.Rule(hab_precarria_deh['Baixa'] & coabitacao_deh['Alta'], deh['Médio']),
-            ctrl.Rule(hab_precarria_deh['Baixa'] & coabitacao_deh['Muito Alta'], deh['Alto']),
-            # Hab_Precária = Média (3)
-            ctrl.Rule(hab_precarria_deh['Média'] & coabitacao_deh['Muito baixa'], deh['Baixo']),
-            ctrl.Rule(hab_precarria_deh['Média'] & coabitacao_deh['Baixa'], deh['Médio']),
-            ctrl.Rule(hab_precarria_deh['Média'] & coabitacao_deh['Média'], deh['Médio']),
-            ctrl.Rule(hab_precarria_deh['Média'] & coabitacao_deh['Alta'], deh['Médio']),
-            ctrl.Rule(hab_precarria_deh['Média'] & coabitacao_deh['Muito Alta'], deh['Alto']),
-            # Hab_Precária = Alta (4)
-            ctrl.Rule(hab_precarria_deh['Alta'] & coabitacao_deh['Muito baixa'], deh['Médio']),
-            ctrl.Rule(hab_precarria_deh['Alta'] & coabitacao_deh['Baixa'], deh['Médio']),
-            ctrl.Rule(hab_precarria_deh['Alta'] & coabitacao_deh['Média'], deh['Médio']),
-            ctrl.Rule(hab_precarria_deh['Alta'] & coabitacao_deh['Alta'], deh['Alto']),
-            ctrl.Rule(hab_precarria_deh['Alta'] & coabitacao_deh['Muito Alta'], deh['Muito alto']),
-            # Hab_Precária = Muito Alta (5)
-            ctrl.Rule(hab_precarria_deh['Muito Alta'] & coabitacao_deh['Muito baixa'], deh['Médio']),
-            ctrl.Rule(hab_precarria_deh['Muito Alta'] & coabitacao_deh['Baixa'], deh['Alto']),
-            ctrl.Rule(hab_precarria_deh['Muito Alta'] & coabitacao_deh['Média'], deh['Alto']),
-            ctrl.Rule(hab_precarria_deh['Muito Alta'] & coabitacao_deh['Alta'], deh['Alto']),
-            ctrl.Rule(hab_precarria_deh['Muito Alta'] & coabitacao_deh['Muito Alta'], deh['Muito alto']),
+            # Regra 1: Muito baixa + Muito baixa -> Muito baixo
+            ctrl.Rule(hab_precarria_deh['Muito_baixa'] & coabitacao_deh['Muito_baixa'], deh['Muito_baixo']),
+            # Regra 2: Muito baixa + baixa -> Muito baixo
+            ctrl.Rule(hab_precarria_deh['Muito_baixa'] & coabitacao_deh['baixa'], deh['Muito_baixo']),
+            # Regra 3: Muito baixa + media -> Baixo
+            ctrl.Rule(hab_precarria_deh['Muito_baixa'] & coabitacao_deh['media'], deh['Baixo']),
+            # Regra 4: Muito baixa + alta -> Médio
+            ctrl.Rule(hab_precarria_deh['Muito_baixa'] & coabitacao_deh['alta'], deh['Medio']),
+            # Regra 5: Muito baixa + muito_alta -> Médio
+            ctrl.Rule(hab_precarria_deh['Muito_baixa'] & coabitacao_deh['muito_alta'], deh['Medio']),
+            # Regra 6: baixa + Muito baixa -> Baixo
+            ctrl.Rule(hab_precarria_deh['baixa'] & coabitacao_deh['Muito_baixa'], deh['Baixo']),
+            # Regra 7: baixa + baixa -> Baixo
+            ctrl.Rule(hab_precarria_deh['baixa'] & coabitacao_deh['baixa'], deh['Baixo']),
+            # Regra 8: baixa + media -> Médio
+            ctrl.Rule(hab_precarria_deh['baixa'] & coabitacao_deh['media'], deh['Medio']),
+            # Regra 9: baixa + alta -> Médio
+            ctrl.Rule(hab_precarria_deh['baixa'] & coabitacao_deh['alta'], deh['Medio']),
+            # Regra 10: baixa + muito_alta -> Alto
+            ctrl.Rule(hab_precarria_deh['baixa'] & coabitacao_deh['muito_alta'], deh['Alto']),
+            # Regra 11: media + Muito baixa -> Baixo
+            ctrl.Rule(hab_precarria_deh['media'] & coabitacao_deh['Muito_baixa'], deh['Baixo']),
+            # Regra 12: media + baixa -> Médio
+            ctrl.Rule(hab_precarria_deh['media'] & coabitacao_deh['baixa'], deh['Medio']),
+            # Regra 13: media + media -> Médio
+            ctrl.Rule(hab_precarria_deh['media'] & coabitacao_deh['media'], deh['Medio']),
+            # Regra 14: media + alta -> Médio
+            ctrl.Rule(hab_precarria_deh['media'] & coabitacao_deh['alta'], deh['Medio']),
+            # Regra 15: media + muito_alta -> Alto
+            ctrl.Rule(hab_precarria_deh['media'] & coabitacao_deh['muito_alta'], deh['Alto']),
+            # Regra 16: alta + Muito baixa -> Médio
+            ctrl.Rule(hab_precarria_deh['alta'] & coabitacao_deh['Muito_baixa'], deh['Medio']),
+            # Regra 17: alta + baixa -> Médio
+            ctrl.Rule(hab_precarria_deh['alta'] & coabitacao_deh['baixa'], deh['Medio']),
+            # Regra 18: alta + media -> Médio
+            ctrl.Rule(hab_precarria_deh['alta'] & coabitacao_deh['media'], deh['Medio']),
+            # Regra 19: alta + alta -> Alto
+            ctrl.Rule(hab_precarria_deh['alta'] & coabitacao_deh['alta'], deh['Alto']),
+            # Regra 20: alta + muito_alta -> Alto
+            ctrl.Rule(hab_precarria_deh['alta'] & coabitacao_deh['muito_alta'], deh['Alto']),
+            # Regra 21: muito_alta + Muito baixa -> Médio
+            ctrl.Rule(hab_precarria_deh['muito_alta'] & coabitacao_deh['Muito_baixa'], deh['Medio']),
+            # Regra 22: muito_alta + baixa -> Alto
+            ctrl.Rule(hab_precarria_deh['muito_alta'] & coabitacao_deh['baixa'], deh['Alto']),
+            # Regra 23: muito_alta + media -> Alto
+            ctrl.Rule(hab_precarria_deh['muito_alta'] & coabitacao_deh['media'], deh['Alto']),
+            # Regra 24: muito_alta + alta -> Muito alto
+            ctrl.Rule(hab_precarria_deh['muito_alta'] & coabitacao_deh['alta'], deh['Muito_alto']),
+            # Regra 25: muito_alta + muito_alta -> Muito alto
+            ctrl.Rule(hab_precarria_deh['muito_alta'] & coabitacao_deh['muito_alta'], deh['Muito_alto']),
+            # Regras adicionais para altissima
+            # Regra 26: altissima + altissima -> Muito alto
+            ctrl.Rule(hab_precarria_deh['altissima'] & coabitacao_deh['altissima'], deh['Muito_alto']),
+            # Regra 27: altissima + muito_alta -> Muito alto
+            ctrl.Rule(hab_precarria_deh['altissima'] & coabitacao_deh['muito_alta'], deh['Muito_alto']),
+            # Regra 28: muito_alta + altissima -> Muito alto
+            ctrl.Rule(hab_precarria_deh['muito_alta'] & coabitacao_deh['altissima'], deh['Muito_alto']),
         ]
         
         self.modules['SIF3_DEH'] = FuzzyModule(
             'SIF3_DEH',
-            {'Hab_Precária': hab_precarria_deh, 'Coabitação': coabitacao_deh},
+            {'Hab_Precaria': hab_precarria_deh, 'Coabitacao': coabitacao_deh},
             deh,
             deh_rules,
-            ['Hab_Precária', 'Coabitação']
+            ['Hab_Precaria', 'Coabitacao']
         )
         
-        print("✅ SIFs 1-3 carregados (SIF 2 corrigido)")
+        print("✅ SIFs 1-3 carregados com regras ajustadas")
     
     def get_module_names(self) -> List[str]:
         return list(self.modules.keys())
@@ -422,7 +497,7 @@ class HousingFuzzySystem:
         return {
             'name': module.name,
             'input_vars': module.input_labels,
-            'output_var': module.output_var.label
+            'output_var': module.output_label
         }
 
 

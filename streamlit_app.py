@@ -3,11 +3,11 @@ Aplicação Streamlit para Sistema Fuzzy Modular - Necessidades Habitacionais
 
 Interface interativa para simular:
 1. SIF 1 - HAP (DOM_RUSTICOS + DOM_IMPROVISADOS -> HAB_PRECARIA)
-2. SIF 2 - COA (UNID_DOM_CONV + DOM_COMODOS -> COA) - CORRIGIDO
+2. SIF 2 - COA (UNID_DOM_CONV + DOM_COMODOS -> COA)
 3. SIF 3 - DEH (Hab_Precária + Coabitação -> DEH)
 4. Índice Final (média dos SIFs)
 
-Baseado nas especificações do MATLAB.
+Baseado nas especificações do MATLAB com regras ajustadas.
 """
 
 import streamlit as st
@@ -96,7 +96,7 @@ def display_priority_badge(priority: str, score: float) -> str:
 def main():
     # Header
     st.markdown('<p class="main-header">🏠 Sistema Fuzzy Modular - SIF 1-3</p>', unsafe_allow_html=True)
-    st.markdown('<p class="sub-header">Baseado nas especificações do MATLAB (SIF 2 corrigido)</p>', unsafe_allow_html=True)
+    st.markdown('<p class="sub-header">Baseado nas especificações do MATLAB com regras ajustadas</p>', unsafe_allow_html=True)
     
     # Inicializar o sistema fuzzy
     fuzzy_system = HousingFuzzySystem()
@@ -150,7 +150,7 @@ def main():
         - Muito Alta: [60, 80, 100]
         - Altíssima: [80, 100, 100]
         
-        **Regras:** 16 regras conforme MATLAB
+        **Regras (11):** Conforme especificação do usuário
         """)
         
         with st.form("sif1_form"):
@@ -192,7 +192,7 @@ def main():
             st.session_state.sif1_result = result.value
     
     with tab2:
-        st.header("SIF 2 - COA (Coabitação) - CORRIGIDO")
+        st.header("SIF 2 - COA (Coabitação)")
         st.markdown("""
         **Entradas:**
         - UNID_DOM_CONV (0-100%): Unidades domésticas conviventes
@@ -214,7 +214,7 @@ def main():
         - muito alta: [60, 80, 100]
         - altíssima: [80, 100, 100]
         
-        **Regras:** 16 regras conforme MATLAB
+        **Regras (16):** Conforme especificação do usuário
         """)
         
         with st.form("sif2_form"):
@@ -259,19 +259,27 @@ def main():
         st.markdown("### SIF 3 - DEH (Déficit Habitacional)")
         st.markdown("""
         **Entradas:**
-        - Hab_Precária (0-100): Resultado do SIF 1
-        - Coabitação (0-100): Resultado do SIF 2
+        - Hab_Precária (0-100): Resultado do SIF 1 (HAB_PRECARIA)
+        - Coabitação (0-100): Resultado do SIF 2 (COA)
         
         **Saída:** DEH (0-100)
         
-        **Funções de pertinência de entrada e saída (5):**
+        **Funções de pertinência de entrada (6):**
         - Muito baixa: [0, 0, 20]
-        - Baixa: [0, 20, 40]
-        - Média: [20, 40, 60]
-        - Alta: [40, 60, 80]
-        - Muito Alta: [60, 100, 100, 100] (trapezoidal)
+        - baixa: [0, 20, 40]
+        - média: [20, 40, 60]
+        - alta: [40, 60, 80]
+        - muito alta: [60, 80, 100]
+        - altíssima: [80, 100, 100]
         
-        **Regras:** 25 regras conforme MATLAB
+        **Funções de pertinência de saída (5):**
+        - Muito baixo: [0, 0, 15, 30] (trapezoidal)
+        - Baixo: [15, 30, 45]
+        - Médio: [30, 45, 60]
+        - Alto: [45, 60, 75]
+        - Muito alto: [60, 75, 100, 100] (trapezoidal)
+        
+        **Regras (28):** 25 regras conforme especificação + 3 adicionais para altíssima
         """)
         
         with st.form("sif3_form"):
@@ -287,8 +295,8 @@ def main():
         
         if submit_sif3:
             result = fuzzy_system.evaluate_module('SIF3_DEH', {
-                'Hab_Precária': hab_precarria,
-                'Coabitação': coabitacao
+                'Hab_Precaria': hab_precarria,
+                'Coabitacao': coabitacao
             })
             
             st.markdown("---")
